@@ -107,3 +107,29 @@ if $check; then
 else
   printf 'Fixtures written to %s.\n' "$out"
 fi
+
+# Live captures are immutable recordings: verify their manifests and the
+# recorder boundary on every host, without regenerating hardware output.
+if $check; then
+  for stream in "$out"/live-*.gliffstream; do
+    [[ -f "$stream" ]] || continue
+    name="$(basename "$stream" .gliffstream)"
+    python3 - "$gen" "$stream" "$work" <<'PY'
+import json, pathlib, subprocess, sys
+program, stream, work = sys.argv[1:]
+path = pathlib.Path(stream)
+manifest = json.loads(path.with_suffix('.json').read_text())
+fresh = json.loads(subprocess.check_output([
+    program, 'describe', stream, '--name', manifest['name'],
+    '--provenance', json.dumps(manifest['provenance'])]))
+if fresh != manifest:
+    raise SystemExit('live manifest differs: ' + stream)
+recorded = pathlib.Path(work) / (path.stem + '.recorded')
+subprocess.run([program, 'record', '--chroma', manifest['configs'][0]['chroma'].lower(),
+                '--frames', str(len(manifest['frames'])), '--out', str(recorded),
+                '--command', program, 'serve', stream], check=True)
+if recorded.read_bytes() != path.read_bytes():
+    raise SystemExit('live replay differs: ' + stream)
+PY
+  done
+fi

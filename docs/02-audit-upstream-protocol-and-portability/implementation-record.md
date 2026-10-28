@@ -59,14 +59,13 @@ changing the 4:2:0 picture, which is what lets the server drop aux on a ladder s
 | Contract/behaviour inventory and fixture manifest; API records for 04, cases for 03 | Done |
 | macOS build logs for both targets without the Linux client stack | Done (`build/portability/`, summary in the audit) |
 | Replay: partial reads/writes, oversized/truncated, unknown, version mismatch, config changes, main/aux | Done |
-| ≥ 1 real Single420 and 1 real Dual420 capture parsed without Hyprland, provenance of the exact server | **Partial**: server-equivalent captures from upstream's CPU encoder and framing at the pinned SHA; no live `gliff-server` run. `record` is ready and tested against `serve` |
-| CPU- and GPU-encoded real samples (SPS/PPS/extradata) | **Partial**: CPU encoder verified; GPU pending a VA-API/Vulkan host |
+| ≥ 1 real Single420 and 1 real Dual420 capture parsed without Hyprland, provenance of the exact server | Done: live CPU Single420/Dual420 and GPU Dual420 captures from the unmodified pinned server; [live validation](live-validation.md) |
+| CPU- and GPU-encoded real samples (SPS/PPS/extradata) | Done: CPU and Intel VA-API/Vulkan Dual420 samples decoded and manifested |
 | No capability inferred from an enum | Done (`DecoderSupport`, Native444 rejection test) |
 
-No Linux/Hyprland host was reachable from this machine (Docker is installed but its daemon
-is stopped, and it would not provide a compositor or GPU encoder). Recording the live
-captures is a short follow-up with the commands in the fixture guide; it should land
-before task 07 relies on GPU (High profile) streams.
+Live captures were added on 2026-10-28 after enabling macOS local-network access
+for T3 Code. See [live validation](live-validation.md) for evidence and remaining
+hardware coverage.
 
 ## Environment
 

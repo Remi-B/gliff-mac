@@ -9,6 +9,10 @@ is stored here. Every fixture replays without Hyprland.
 | `streams/synthetic-single420` | synthetic, server-equivalent | 320×192 (fps 30 → 15 pace-only), 384×240 rebuild | 16 (IDR at 0, 6, 10) | 22 KB |
 | `streams/synthetic-dual420` | synthetic, server-equivalent | same, Dual420 | 16 main/aux pairs | 46 KB |
 
+| `streams/live-cpu-single420` | live CPU | 640×480 → 800×600 | 45 | 61 KB |
+| `streams/live-cpu-dual420` | live CPU | 640×480, pacing update | 20 pairs | 51 KB |
+| `streams/live-gpu-dual420` | live VA-API/Vulkan | 640×480, pacing update | 20 pairs | 40 KB |
+
 ## Provenance classes
 
 - `synthetic-server-equivalent`: deterministic BGRA frames encoded by upstream
@@ -16,7 +20,7 @@ is stored here. Every fixture replays without Hyprland.
   `gliff_transport::Framed` in `gliff-server`'s message order, at the pinned SHA. Not a
   live capture: no Hyprland capture, rate control, writer scheduling or GPU encoder ran.
 - `live-server-capture`: recorded from an unmodified `gliff-server --stdio` with
-  `gliff-fixture-gen record`. None is committed yet; see below.
+  `gliff-fixture-gen record`. Three are committed; see the table below.
 
 ## Manifest
 
@@ -44,6 +48,9 @@ SIMD, so bytes are reproducible for a given thread count and architecture; `--ch
 compares a fresh generation only when both match the manifest. On every host it replays
 the committed streams through `record`/`serve` and re-describes them, so the committed
 manifests are always checked against their streams.
+
+Live capture setup, commands and decoded evidence: [live validation](../../docs/02-audit-upstream-protocol-and-portability/live-validation.md).
+`--check` also re-describes and byte-for-byte replays all committed live captures.
 
 ## Recording a live server
 

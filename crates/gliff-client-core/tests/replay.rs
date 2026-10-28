@@ -678,3 +678,44 @@ async fn a_cancelled_read_resumes_inside_a_frame_payload() {
     assert_eq!(&f.main[..], IDR);
     assert_eq!(f.aux.as_deref(), Some(aux_idr));
 }
+
+#[tokio::test]
+async fn live_captures_cover_cpu_gpu_and_resolution_rebuild() {
+    for (name, pipeline, chroma) in [
+        ("live-cpu-single420", "cpu", "Single420"),
+        ("live-cpu-dual420", "cpu", "Dual420"),
+        ("live-gpu-dual420", "gpu", "Dual420"),
+    ] {
+        let fx = fixture(name);
+        for config in fx.manifest["configs"].as_array().unwrap() {
+            assert_eq!(config["pipeline"], pipeline);
+            assert_eq!(config["chroma"], chroma);
+        }
+        let mut reader = ServerReader::new(&fx.bytes[..], both_chroma());
+        let (events, err) = read_all(&mut reader).await;
+        assert!(err.is_none());
+        assert_matches_manifest(&events, &fx.manifest);
+        if name == "live-cpu-single420" {
+            let configs = fx.manifest["configs"].as_array().unwrap();
+            assert_eq!(configs[0]["width"], 640);
+            assert_eq!(configs[1]["width"], 800);
+            assert_eq!(configs[1]["height"], 600);
+            assert_eq!(configs[1]["rebuild"], true);
+            let first = fx.manifest["frames"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|f| f["generation"] == configs[1]["generation"])
+                .unwrap();
+            assert_eq!(first["keyframe"], true);
+            assert!(first["main_nal_types"]
+                .as_array()
+                .unwrap()
+                .contains(&serde_json::json!(7)));
+            assert!(first["main_nal_types"]
+                .as_array()
+                .unwrap()
+                .contains(&serde_json::json!(8)));
+        }
+    }
+}

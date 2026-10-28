@@ -15,7 +15,13 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
-pub const FIXTURES: [&str; 2] = ["synthetic-single420", "synthetic-dual420"];
+pub const FIXTURES: [&str; 5] = [
+    "synthetic-single420",
+    "synthetic-dual420",
+    "live-cpu-single420",
+    "live-cpu-dual420",
+    "live-gpu-dual420",
+];
 
 pub fn fixture_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/streams")

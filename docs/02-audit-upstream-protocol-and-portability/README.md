@@ -1,7 +1,6 @@
 # 02 — audit-upstream-protocol-and-portability
 
-Status: in review — audit, contract and replay harness done; live server captures
-pending a Linux/Hyprland host. Dependencies: [01](../01-setup-project-structure/README.md).
+Status: in review — audit, contract, replay harness and live CPU/GPU captures done. Dependencies: [01](../01-setup-project-structure/README.md).
 
 Results: [inventory](protocol-inventory.md), [session/video contract](session-video-contract.md),
 [portability audit](portability-audit.md), [fixtures](../../tests/fixtures/README.md),
@@ -25,7 +24,7 @@ detect upstream drift. No successful macOS build is assumed from manifest inspec
 - [x] Record framing (two little-endian `u32` lengths, not one 8-byte length; CBOR body, out-of-band payloads),
   size limits, unknown-message handling, fatal compatibility errors, `Hello` /
   `HelloAck`, feature negotiation, initial ping/pong and subsequent configuration.
-- [~] Define a session/video contract including configuration generation, geometry,
+- [x] Define a session/video contract including configuration generation, geometry,
   scale, frame ID, `pts_us`, keyframe and main/aux bytes. Verify H.264 Annex B,
   SPS/PPS and extradata behavior with real CPU- and GPU-encoded server samples.
 - [x] Specify when the native asynchronous decoder reports completion and when
@@ -33,13 +32,13 @@ detect upstream drift. No successful macOS build is assumed from manifest inspec
   separate presentation timing, queue budgets, keyframe recovery, and disconnect rules.
 - [x] Record evdev/XKB input semantics, logical coordinates, cursor payloads,
   headless/mirror setup, and clipboard offer/request/ack/cancel behavior.
-- [~] Add a minimal mock peer/replay harness using upstream framing and real server
+- [x] Add a minimal mock peer/replay harness using upstream framing and real server
   captures. Store safe synthetic fixture content, generation commands, server SHA,
   settings, expected decoded output/metadata and checksums. Keep hardware-only tests
   separate from deterministic fixtures; do not copy upstream test suites wholesale.
 
-`[~]`: done with server-equivalent captures from upstream's CPU encoder and framing;
-live CPU and GPU `gliff-server` captures remain (see the implementation record).
+Live captures now include CPU Single420 with a monitor mode change, CPU Dual420,
+and VA-API/Vulkan Dual420 on omarchy-mbp. See [live validation](live-validation.md).
 
 ## Deliverables and acceptance
 
