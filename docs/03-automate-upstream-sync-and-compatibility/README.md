@@ -1,6 +1,6 @@
 # 03 — automate-upstream-sync-and-compatibility
 
-Status: planned. Dependencies: [02](../audit-upstream-protocol-and-portability/README.md).
+Status: planned. Dependencies: [02](../02-audit-upstream-protocol-and-portability/README.md).
 
 ## Outcome
 
@@ -43,4 +43,4 @@ available rather than postponing integration infrastructure until release.
 - A candidate remains unqualified while required hardware evidence is unavailable.
   Human review is the initial merge policy; automatic merge is a later decision.
 
-Next: [SSH/session implementation](../implement-ssh-session/README.md), after task 04.
+Next: [SSH/session implementation](../05-implement-ssh-session/README.md), after task 04.

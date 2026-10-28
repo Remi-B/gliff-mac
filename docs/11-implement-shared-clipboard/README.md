@@ -1,8 +1,8 @@
 # 11 — implement-shared-clipboard
 
-Status: planned. Dependencies: [05](../implement-ssh-session/README.md),
-[06](../create-native-macos-app/README.md),
-[10](../implement-displays-and-reconnection/README.md).
+Status: planned. Dependencies: [05](../05-implement-ssh-session/README.md),
+[06](../06-create-native-macos-app/README.md),
+[10](../10-implement-displays-and-reconnection/README.md).
 
 ## Outcome
 

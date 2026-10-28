@@ -57,4 +57,4 @@ inside the app repository under `docs/`.
 - Stop and resolve any unexpected local implementation before replacing files.
   This task does not implement the session, video, or input layers.
 
-Next: [audit-upstream-protocol-and-portability](../audit-upstream-protocol-and-portability/README.md).
+Next: [audit-upstream-protocol-and-portability](../02-audit-upstream-protocol-and-portability/README.md).

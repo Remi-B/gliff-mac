@@ -1,6 +1,6 @@
 # 06 — create-native-macos-app
 
-Status: planned. Dependencies: [04](../build-rust-swift-bridge/README.md).
+Status: planned. Dependencies: [04](../04-build-rust-swift-bridge/README.md).
 
 ## Outcome
 

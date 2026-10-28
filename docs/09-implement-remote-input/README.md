@@ -1,6 +1,6 @@
 # 09 — implement-remote-input
 
-Status: planned. Dependencies: [07](../decode-and-display-h264/README.md).
+Status: planned. Dependencies: [07](../07-decode-and-display-h264/README.md).
 
 ## Outcome
 

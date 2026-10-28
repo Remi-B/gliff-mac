@@ -1,6 +1,6 @@
 # 02 — audit-upstream-protocol-and-portability
 
-Status: planned. Dependencies: [01](../setup-project-structure/README.md).
+Status: planned. Dependencies: [01](../01-setup-project-structure/README.md).
 
 ## Outcome
 
@@ -46,5 +46,5 @@ detect upstream drift. No successful macOS build is assumed from manifest inspec
   live Hyprland session. Their provenance identifies the exact generating server.
 - No unsupported codec/chroma/layout capability is inferred from an enum existing.
 
-Next: [upstream compatibility automation](../automate-upstream-sync-and-compatibility/README.md)
-and [Rust/Swift bridge](../build-rust-swift-bridge/README.md).
+Next: [upstream compatibility automation](../03-automate-upstream-sync-and-compatibility/README.md)
+and [Rust/Swift bridge](../04-build-rust-swift-bridge/README.md).

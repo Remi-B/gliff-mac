@@ -33,7 +33,7 @@ dans l'invité : formatage, Clippy, harnais de tests Rust, contrôles des deux c
 Apple, package Swift et **build universel Xcode**. `lipo` confirme les tranches
 **x86_64 / arm64**, toutes deux avec une cible minimale **macOS 13.0**. Le socle
 de l'app se lance dans l'invité Intel. Les détails figurent dans
-[le compte rendu de la tâche 01](../setup-project-structure/implementation-record.md).
+[le compte rendu de la tâche 01](../01-setup-project-structure/implementation-record.md).
 
 ## Utilisation de l'environnement installé
 
