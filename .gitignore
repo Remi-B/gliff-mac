@@ -1,0 +1,10 @@
+/target/
+/build/
+.DS_Store
+**/.build/
+**/.swiftpm/
+**/DerivedData/
+**/xcuserdata/
+*.xcuserstate
+/macos/Packages/GliffCore/Sources/GliffCore/Generated/
+/macos/Packages/GliffCore/Artifacts/
