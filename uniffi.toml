@@ -1,0 +1,4 @@
+[bindings.swift]
+module_name = "GliffCore"
+ffi_module_name = "GliffCoreFFI"
+generate_module_map = true

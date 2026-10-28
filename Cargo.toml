@@ -1,0 +1,27 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/gliff-client-core",
+    "crates/gliff-mac-core",
+    "tools/uniffi-bindgen",
+]
+exclude = ["vendor/gliff"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.90"
+license = "MIT"
+publish = false
+
+[workspace.dependencies]
+gliff-client-core = { path = "crates/gliff-client-core" }
+gliff-proto = { path = "vendor/gliff/crates/gliff-proto" }
+gliff-transport = { path = "vendor/gliff/crates/gliff-transport" }
+uniffi = { version = "=0.29.4", default-features = false }
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+undocumented_unsafe_blocks = "warn"

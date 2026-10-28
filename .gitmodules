@@ -1,0 +1,3 @@
+[submodule "vendor/gliff"]
+	path = vendor/gliff
+	url = https://github.com/omacom/gliff.git
