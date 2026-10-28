@@ -14,7 +14,7 @@ frequently without maintaining a second Linux client or server.
 The supplied [technical specification](base-specification.md) is preserved
 verbatim. Its hybrid Swift/Rust direction is retained. Its repository layout,
 illustrative APIs, build snippets, and incomplete protocol assumptions are adjusted
-by this plan and the [architecture decision](setup-project-structure/architecture-decision.md).
+by this plan and the [architecture decision](01-setup-project-structure/architecture-decision.md).
 Use the original for product intent and these documents for implementation work.
 
 ## Recommended integration
@@ -31,7 +31,7 @@ and history in local backups rather than carrying that ancestry into the app roo
 The user recreated the independent public GitHub repository directly. The previous
 local folder was removed and replaced by a fresh GitHub clone; task 01's foundation
 is reapplied locally on that new history. See task 01's
-[implementation record](setup-project-structure/implementation-record.md) for the
+[implementation record](01-setup-project-structure/implementation-record.md) for the
 current state, backup locations and validation evidence.
 
 At the initial inspection, the original fork's HEAD and upstream `main` both resolved to
@@ -103,19 +103,19 @@ compatibility, and build risks before UI breadth.
 
 | # | Task | Depends on | Completion evidence |
 | --- | --- | --- | --- |
-| 01 | [setup-project-structure](setup-project-structure/README.md) | — | Fresh app history; pinned submodule; local fork backup; bootstrap/checks and universal Xcode build passed in the macOS VM |
-| 02 | [audit-upstream-protocol-and-portability](audit-upstream-protocol-and-portability/README.md) | 01 | Real contract fixtures; selected crates compile on macOS; platform boundary verified |
-| 03 | [automate-upstream-sync-and-compatibility](automate-upstream-sync-and-compatibility/README.md) | 02 | Repeatable upstream bump/revert and compatibility CI; later gates added as implemented |
-| 04 | [build-rust-swift-bridge](build-rust-swift-bridge/README.md) | 02 | Repeatable bindings/XCFramework and Swift import/callback smoke test |
-| 05 | [implement-ssh-session](implement-ssh-session/README.md) | 03, 04 | Authenticated handshake, bounded video delivery, acknowledgments and clean cancellation |
-| 06 | [create-native-macos-app](create-native-macos-app/README.md) | 04 | Native app shell; typed session UI; deterministic Xcode build |
-| 07 | [decode-and-display-h264](decode-and-display-h264/README.md) | 05, 06 | Live Single420 video, correct geometry and asynchronous decode feedback |
-| 08 | [render-full-chroma-metal](render-full-chroma-metal/README.md) | 07 | Dual420 pair decoding and reference-verified full-chroma rendering |
-| 09 | [implement-remote-input](implement-remote-input/README.md) | 07 | Focused pointer/keyboard control; escape; explicit keyboard-layout support |
-| 10 | [implement-displays-and-reconnection](implement-displays-and-reconnection/README.md) | 08, 09 | Mirror/headless modes, resize, reconnect and session cleanup |
-| 11 | [implement-shared-clipboard](implement-shared-clipboard/README.md) | 05, 06, 10 | On-demand text/image/file clipboard, cancellation and session isolation |
-| 12 | [validate-performance-and-end-to-end](validate-performance-and-end-to-end/README.md) | 03, 08, 09, 10, 11 | Cross-platform acceptance matrix and measured latency/memory/quality |
-| 13 | [package-and-release-macos](package-and-release-macos/README.md) | 12 | Tested universal app, signing/notarization workflow and release provenance |
+| 01 | [setup-project-structure](01-setup-project-structure/README.md) | — | Fresh app history; pinned submodule; local fork backup; bootstrap/checks and universal Xcode build passed in the macOS VM |
+| 02 | [audit-upstream-protocol-and-portability](02-audit-upstream-protocol-and-portability/README.md) | 01 | Real contract fixtures; selected crates compile on macOS; platform boundary verified |
+| 03 | [automate-upstream-sync-and-compatibility](03-automate-upstream-sync-and-compatibility/README.md) | 02 | Repeatable upstream bump/revert and compatibility CI; later gates added as implemented |
+| 04 | [build-rust-swift-bridge](04-build-rust-swift-bridge/README.md) | 02 | Repeatable bindings/XCFramework and Swift import/callback smoke test |
+| 05 | [implement-ssh-session](05-implement-ssh-session/README.md) | 03, 04 | Authenticated handshake, bounded video delivery, acknowledgments and clean cancellation |
+| 06 | [create-native-macos-app](06-create-native-macos-app/README.md) | 04 | Native app shell; typed session UI; deterministic Xcode build |
+| 07 | [decode-and-display-h264](07-decode-and-display-h264/README.md) | 05, 06 | Live Single420 video, correct geometry and asynchronous decode feedback |
+| 08 | [render-full-chroma-metal](08-render-full-chroma-metal/README.md) | 07 | Dual420 pair decoding and reference-verified full-chroma rendering |
+| 09 | [implement-remote-input](09-implement-remote-input/README.md) | 07 | Focused pointer/keyboard control; escape; explicit keyboard-layout support |
+| 10 | [implement-displays-and-reconnection](10-implement-displays-and-reconnection/README.md) | 08, 09 | Mirror/headless modes, resize, reconnect and session cleanup |
+| 11 | [implement-shared-clipboard](11-implement-shared-clipboard/README.md) | 05, 06, 10 | On-demand text/image/file clipboard, cancellation and session isolation |
+| 12 | [validate-performance-and-end-to-end](12-validate-performance-and-end-to-end/README.md) | 03, 08, 09, 10, 11 | Cross-platform acceptance matrix and measured latency/memory/quality |
+| 13 | [package-and-release-macos](13-package-and-release-macos/README.md) | 12 | Tested universal app, signing/notarization workflow and release provenance |
 
 Tasks 04 and 06 can progress alongside compatible work once their prerequisites
 exist. Task 03 starts early and gains bridge, video, input, and clipboard checks as
@@ -150,7 +150,7 @@ Track Rust source compatibility separately from wire compatibility. Sharing
 `PROTOCOL_VERSION = 1` is not sufficient: optional features, stream changes,
 unknown messages, and actual keyboard/video/clipboard behavior need coverage.
 Maintain the initial supported release, current tested pin, and candidate tip as
-the compatibility matrix. The detailed [update runbook](automate-upstream-sync-and-compatibility/upstream-update-workflow.md)
+the compatibility matrix. The detailed [update runbook](03-automate-upstream-sync-and-compatibility/upstream-update-workflow.md)
 defines the pin, evidence, patch, and rollback process.
 
 ## Completion and open decisions

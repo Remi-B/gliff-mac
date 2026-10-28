@@ -1,11 +1,11 @@
 # 12 — validate-performance-and-end-to-end
 
 Status: planned. Dependencies:
-[03](../automate-upstream-sync-and-compatibility/README.md),
-[08](../render-full-chroma-metal/README.md),
-[09](../implement-remote-input/README.md),
-[10](../implement-displays-and-reconnection/README.md),
-[11](../implement-shared-clipboard/README.md).
+[03](../03-automate-upstream-sync-and-compatibility/README.md),
+[08](../08-render-full-chroma-metal/README.md),
+[09](../09-implement-remote-input/README.md),
+[10](../10-implement-displays-and-reconnection/README.md),
+[11](../11-implement-shared-clipboard/README.md).
 
 ## Outcome
 

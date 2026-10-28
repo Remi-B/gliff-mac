@@ -47,6 +47,6 @@ changes together. Run `git submodule update --init --recursive --checkout`, rebu
 generated artifacts and rerun checks. Never force-push released app history or
 switch only the vendor commit while leaving incompatible app code behind.
 
-The [architecture decision](setup-project-structure/architecture-decision.md)
+The [architecture decision](01-setup-project-structure/architecture-decision.md)
 and task records supersede the initial proposal to preserve the fork's history in
 the new application repository.

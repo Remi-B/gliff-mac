@@ -1,7 +1,7 @@
 # 10 — implement-displays-and-reconnection
 
-Status: planned. Dependencies: [08](../render-full-chroma-metal/README.md),
-[09](../implement-remote-input/README.md).
+Status: planned. Dependencies: [08](../08-render-full-chroma-metal/README.md),
+[09](../09-implement-remote-input/README.md).
 
 ## Outcome
 

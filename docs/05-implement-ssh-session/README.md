@@ -1,7 +1,7 @@
 # 05 — implement-ssh-session
 
-Status: planned. Dependencies: [03](../automate-upstream-sync-and-compatibility/README.md),
-[04](../build-rust-swift-bridge/README.md).
+Status: planned. Dependencies: [03](../03-automate-upstream-sync-and-compatibility/README.md),
+[04](../04-build-rust-swift-bridge/README.md).
 
 ## Outcome
 

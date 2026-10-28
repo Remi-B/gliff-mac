@@ -1,6 +1,6 @@
 # 13 — package-and-release-macos
 
-Status: planned. Dependencies: [12](../validate-performance-and-end-to-end/README.md).
+Status: planned. Dependencies: [12](../12-validate-performance-and-end-to-end/README.md).
 
 ## Outcome
 

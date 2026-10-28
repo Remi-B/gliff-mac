@@ -1,7 +1,7 @@
 # 07 — decode-and-display-h264
 
-Status: planned. Dependencies: [05](../implement-ssh-session/README.md),
-[06](../create-native-macos-app/README.md).
+Status: planned. Dependencies: [05](../05-implement-ssh-session/README.md),
+[06](../06-create-native-macos-app/README.md).
 
 ## Outcome
 

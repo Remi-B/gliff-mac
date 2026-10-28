@@ -1,6 +1,6 @@
 # 04 — build-rust-swift-bridge
 
-Status: planned. Dependencies: [02](../audit-upstream-protocol-and-portability/README.md).
+Status: planned. Dependencies: [02](../02-audit-upstream-protocol-and-portability/README.md).
 
 ## Outcome
 
