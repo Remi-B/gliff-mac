@@ -1,0 +1,22 @@
+[package]
+name = "gliff-fixture-gen"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.90"
+license = "MIT"
+publish = false
+
+# A separate workspace: the generator links upstream's CPU encoder (OpenH264),
+# which must never enter the application's dependency graph.
+[workspace]
+
+[dependencies]
+gliff-proto = { path = "../../vendor/gliff/crates/gliff-proto" }
+gliff-transport = { path = "../../vendor/gliff/crates/gliff-transport" }
+gliff-sw = { path = "../../vendor/gliff/crates/gliff-sw" }
+minicbor = { version = "2", features = ["derive", "alloc"] }
+tokio = { version = "1", features = ["rt", "macros", "io-util", "io-std", "process", "fs", "time"] }
+gliff-client-core = { path = "../../crates/gliff-client-core" }
+png = "0.17"
+serde_json = "1"
+sha2 = "0.10"
