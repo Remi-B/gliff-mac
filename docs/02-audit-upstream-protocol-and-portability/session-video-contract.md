@@ -71,6 +71,10 @@ does not auto-reconnect.
 
 ## Rules
 
+0. **Cancellation.** `ServerReader::next_event` is cancel-safe, like upstream
+   `read_msg`: a frame whose payload was partly read is resumed by the next call, so the
+   session task may race it against outgoing work in a `select!` without losing a frame
+   (and its ack).
 1. **Handshake.** First server message must be `HelloAck` with `PROTOCOL_VERSION`, or
    `Error`. `Pong` is written before any other client message after a `Ping`.
 2. **Configuration.** A config outside `DecoderSupport`, with invalid size/view, is a
@@ -109,7 +113,7 @@ does not auto-reconnect.
     `Error` 1–255 and contract errors are not retried; `ERROR_SETUP` and transport errors
     may be retried by task 10's reconnection policy.
 
-Rules 1–6 and 10 are executable today. Rules 7–9 are the specification tasks 05 and 07
+Rules 0–6 and 10 are executable today. Rules 7–9 are the specification tasks 05 and 07
 implement; their budgets are initial values to be measured in task 12.
 
 ## Pacing measured on fixtures

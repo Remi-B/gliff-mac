@@ -19,9 +19,11 @@ replay harness complete; live server captures pending a Linux/Hyprland host.
   `gliff-sw`; `synth`, `record`, `serve`, `describe`.
 - Fixtures `tests/fixtures/streams/synthetic-{single420,dual420}` with manifests;
   `scripts/generate-fixtures.sh [--check]`; [fixture guide](../../tests/fixtures/README.md).
-- Tests: 3 Annex B unit tests; 17 replay tests; 2 mock-peer tests; 1 portability test;
-  1 fixture-tool unit test. `scripts/check.sh` runs all of them, the fixture check and the
-  portability audit.
+- Tests: 3 Annex B unit tests; 18 replay tests (including cancellation inside a frame
+  payload); 2 mock-peer tests; 1 portability test; 3 fixture-tool tests (including a
+  delayed High-profile picture from upstream's x264 test stream and a truncated
+  capture). `scripts/check.sh` runs all of them, the fixture check and the portability
+  audit.
 - Evidence: [`evidence/chroma-single420-vs-dual420.png`](evidence/chroma-single420-vs-dual420.png),
   decoded by upstream's reference decoder from the committed fixtures.
 

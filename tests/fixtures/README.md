@@ -41,8 +41,9 @@ scripts/generate-fixtures.sh --check  # replay through record/serve and compare
 
 OpenH264 cuts one slice per encoder thread (`min(CPUs, 4)`) and uses per-architecture
 SIMD, so bytes are reproducible for a given thread count and architecture; `--check`
-compares bytes only when both match the manifest, and always replays the committed
-streams through `record`/`serve`.
+compares a fresh generation only when both match the manifest. On every host it replays
+the committed streams through `record`/`serve` and re-describes them, so the committed
+manifests are always checked against their streams.
 
 ## Recording a live server
 

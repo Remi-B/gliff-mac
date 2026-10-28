@@ -69,9 +69,21 @@ PY
     "$gen" record --chroma "$chroma" --frames 16 --out "$work/$name.recorded" \
       --command "$gen" serve "$out/$name.gliffstream" 2>/dev/null
     cmp "$work/$name.recorded" "$out/$name.gliffstream"
+    # Re-describe the committed stream with its committed provenance: the
+    # manifest (checksums, NAL types, decoded hashes, PSNR) must match on
+    # any host, whatever produced the bytes.
+    "$gen" describe "$out/$name.gliffstream" --name "$name" \
+      --provenance "$(python3 -c 'import json, sys; print(json.dumps(json.load(open(sys.argv[1]))["provenance"]))' "$out/$name.json")" \
+      > "$work/$name.redescribed.json"
+    python3 - "$work/$name.redescribed.json" "$out/$name.json" <<'PY'
+import json, sys
+fresh, committed = (json.load(open(p)) for p in sys.argv[1:])
+if fresh != committed:
+    raise SystemExit("committed manifest does not describe its stream: " + sys.argv[2])
+PY
     committed="$(python3 -c 'import json, sys; s = json.load(open(sys.argv[1]))["provenance"]["settings"]; print(s["encoder_threads"], s["encoder_arch"])' "$out/$name.json")"
     if [[ "$committed" != "$threads $arch" ]]; then
-      printf '%s: encoded with OpenH264 threads/arch %s, this host is %s; byte comparison skipped.\n' \
+      printf '%s: encoded with OpenH264 threads/arch %s, this host is %s; fresh-generation comparison skipped.\n' \
         "$name" "$committed" "$threads $arch"
       continue
     fi

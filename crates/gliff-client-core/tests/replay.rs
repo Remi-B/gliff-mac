@@ -649,3 +649,32 @@ async fn a_malformed_cursor_shape_is_ignored_not_fatal() {
         ServerEvent::Frame(FrameDisposition::Decode(_))
     ));
 }
+
+#[tokio::test]
+async fn a_cancelled_read_resumes_inside_a_frame_payload() {
+    use tokio::io::AsyncWriteExt;
+    // Cancel `next_event` while the main and then the aux payload are only
+    // partly delivered: the next call must return that same frame.
+    let aux_idr = &[0, 0, 1, 0x67, 9, 0, 0, 1, 0x68, 9, 0, 0, 1, 0x65, 9][..];
+    let stream = session_with(ChromaMode::Dual420, &video(3, true, IDR, aux_idr));
+    let frame_at = stream.len() - (IDR.len() + aux_idr.len());
+    let (mut tx, rx) = tokio::io::duplex(64 * 1024);
+    let mut reader = ServerReader::new(rx, both_chroma());
+    let wait = std::time::Duration::from_millis(20);
+    let cuts = [0, frame_at + 4, frame_at + IDR.len() + 3, stream.len()];
+    let mut events = Vec::new();
+    for pair in cuts.windows(2) {
+        tx.write_all(&stream[pair[0]..pair[1]]).await.unwrap();
+        // A timeout cancels the pending read.
+        while let Ok(event) = tokio::time::timeout(wait, reader.next_event()).await {
+            events.push(event.unwrap());
+        }
+    }
+    assert_eq!(events.len(), 3, "{events:?}");
+    let ServerEvent::Frame(FrameDisposition::Decode(f)) = &events[2] else {
+        panic!("{:?}", events[2]);
+    };
+    assert_eq!(f.frame_id, 3);
+    assert_eq!(&f.main[..], IDR);
+    assert_eq!(f.aux.as_deref(), Some(aux_idr));
+}

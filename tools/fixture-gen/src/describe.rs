@@ -1,6 +1,7 @@
 //! Replay a capture through the client contract and print its manifest.
 
-use std::path::Path;
+use std::collections::VecDeque;
+use std::path::{Path, PathBuf};
 
 use gliff_client_core::annexb;
 use gliff_client_core::events::{ServerEvent, ServerReader};
@@ -18,16 +19,44 @@ pub async fn run(opts: &Opts) -> Result<()> {
         Some(p) => serde_json::from_str(p)?,
         None => json!({}),
     };
+    let name = opts
+        .get("--name")
+        .map(str::to_owned)
+        .unwrap_or_else(|| path.file_name().unwrap().to_string_lossy().into_owned());
+    let mut manifest = describe(&bytes, provenance, opts.optional_path("--png-dir")).await?;
+    manifest["name"] = json!(name);
+    manifest["file"] = json!(path.file_name().unwrap().to_string_lossy());
+    println!("{}", serde_json::to_string_pretty(&manifest)?);
+    Ok(())
+}
+
+/// The reference decoder of the current generation, and the frames whose
+/// picture it has not returned yet. A High-profile stream comes out one
+/// access unit late, so pictures are matched to frames in decode order.
+struct Reference {
+    decoder: gliff_sw::Decoder,
+    waiting: VecDeque<usize>,
+}
+
+pub async fn describe(bytes: &[u8], provenance: Value, png_dir: Option<PathBuf>) -> Result<Value> {
+    // `Closed` also ends a stream cut inside a frame: refuse those.
+    let complete = crate::capture::complete_messages(bytes, u64::MAX);
+    if complete != bytes.len() {
+        return Err(format!(
+            "the capture ends inside a frame: {} trailing bytes after byte {complete}",
+            bytes.len() - complete
+        )
+        .into());
+    }
     let synthetic = provenance["kind"] == "synthetic-server-equivalent";
-    let png_dir = opts.optional_path("--png-dir");
     let mut reader = ServerReader::new(
-        &bytes[..],
+        bytes,
         DecoderSupport::h264(&[ChromaMode::Dual420, ChromaMode::Single420]),
     );
     let mut messages: Vec<Value> = Vec::new();
     let mut configs: Vec<Value> = Vec::new();
     let mut frames: Vec<Value> = Vec::new();
-    let mut decoder: Option<gliff_sw::Decoder> = None;
+    let mut reference: Option<Reference> = None;
     loop {
         let event = match reader.next_event().await {
             Ok(e) => e,
@@ -40,7 +69,13 @@ pub async fn run(opts: &Opts) -> Result<()> {
         match event {
             ServerEvent::Config(c) => {
                 if c.rebuild {
-                    decoder = Some(gliff_sw::Decoder::new(c.is_dual(), c.width, c.height)?);
+                    if let Some(old) = reference.take() {
+                        drain(old, &mut frames, synthetic, png_dir.as_deref())?;
+                    }
+                    reference = Some(Reference {
+                        decoder: gliff_sw::Decoder::new(c.is_dual(), c.width, c.height)?,
+                        waiting: VecDeque::new(),
+                    });
                 }
                 configs.push(json!({
                     "generation": c.generation,
@@ -59,12 +94,7 @@ pub async fn run(opts: &Opts) -> Result<()> {
             }
             ServerEvent::Frame(FrameDisposition::Decode(f)) => {
                 let aux = f.aux.as_deref().unwrap_or_default();
-                let decoded = decoder
-                    .as_mut()
-                    .ok_or("frame without decoder")?
-                    .decode(&f.main, aux)?
-                    .ok_or("the reference decoder held a Baseline picture")?;
-                let mut entry = json!({
+                frames.push(json!({
                     "generation": f.generation,
                     "revision": f.revision,
                     "frame_id": f.frame_id,
@@ -76,26 +106,13 @@ pub async fn run(opts: &Opts) -> Result<()> {
                     "aux_len": aux.len(),
                     "aux_sha256": f.aux.as_deref().map(hex),
                     "aux_nal_types": f.aux.as_deref().map(annexb::nal_types).transpose()?,
-                    "decoded_width": decoded.width,
-                    "decoded_height": decoded.height,
-                    "decoded_bgra_sha256": hex(&decoded.pixels),
-                });
-                if synthetic {
-                    let source = synth::source_frame(decoded.width, decoded.height, f.frame_id);
-                    let (stripe, rest) =
-                        split_stripe(&source, &decoded.pixels, decoded.width, decoded.height);
-                    entry["chroma_stripe_psnr_db"] = json!(round2(stripe));
-                    entry["rest_psnr_db"] = json!(round2(rest));
+                }));
+                let r = reference.as_mut().ok_or("frame without decoder")?;
+                r.waiting.push_back(frames.len() - 1);
+                if let Some(picture) = r.decoder.decode(&f.main, aux)? {
+                    let index = r.waiting.pop_front().expect("a waiting frame");
+                    fill(&mut frames[index], &picture, synthetic, png_dir.as_deref())?;
                 }
-                if let Some(dir) = &png_dir {
-                    write_png(
-                        &dir.join(format!("decoded-{:03}.png", f.frame_id)),
-                        decoded.width,
-                        decoded.height,
-                        &decoded.pixels,
-                    )?;
-                }
-                frames.push(entry);
             }
             ServerEvent::Frame(FrameDisposition::AwaitKeyframe { frame_id, .. }) => {
                 return Err(
@@ -105,21 +122,62 @@ pub async fn run(opts: &Opts) -> Result<()> {
             _ => {}
         }
     }
-    let name = opts
-        .get("--name")
-        .map(str::to_owned)
-        .unwrap_or_else(|| path.file_name().unwrap().to_string_lossy().into_owned());
-    let manifest = json!({
-        "name": name,
-        "file": path.file_name().unwrap().to_string_lossy(),
+    if let Some(r) = reference.take() {
+        drain(r, &mut frames, synthetic, png_dir.as_deref())?;
+    }
+    Ok(json!({
         "bytes": bytes.len(),
-        "sha256": hex(&bytes),
+        "sha256": hex(bytes),
         "provenance": provenance,
         "messages": messages,
         "configs": configs,
         "frames": frames,
-    });
-    println!("{}", serde_json::to_string_pretty(&manifest)?);
+    }))
+}
+
+/// Flush the pictures a decoder still holds into their frames; every frame
+/// must have produced one.
+fn drain(
+    mut r: Reference,
+    frames: &mut [Value],
+    synthetic: bool,
+    png_dir: Option<&Path>,
+) -> Result<()> {
+    while let Some(&index) = r.waiting.front() {
+        let Some(picture) = r.decoder.flush()? else {
+            let id = &frames[index]["frame_id"];
+            return Err(format!("the reference decoder produced no picture for frame {id}").into());
+        };
+        r.waiting.pop_front();
+        fill(&mut frames[index], &picture, synthetic, png_dir)?;
+    }
+    Ok(())
+}
+
+fn fill(
+    entry: &mut Value,
+    decoded: &gliff_sw::BgraFrame,
+    synthetic: bool,
+    png_dir: Option<&Path>,
+) -> Result<()> {
+    let frame_id = entry["frame_id"].as_u64().expect("frame id");
+    entry["decoded_width"] = json!(decoded.width);
+    entry["decoded_height"] = json!(decoded.height);
+    entry["decoded_bgra_sha256"] = json!(hex(&decoded.pixels));
+    if synthetic {
+        let source = synth::source_frame(decoded.width, decoded.height, frame_id);
+        let (stripe, rest) = split_stripe(&source, &decoded.pixels, decoded.width, decoded.height);
+        entry["chroma_stripe_psnr_db"] = json!(round2(stripe));
+        entry["rest_psnr_db"] = json!(round2(rest));
+    }
+    if let Some(dir) = png_dir {
+        write_png(
+            &dir.join(format!("decoded-{frame_id:03}.png")),
+            decoded.width,
+            decoded.height,
+            &decoded.pixels,
+        )?;
+    }
     Ok(())
 }
 
@@ -185,4 +243,97 @@ pub fn write_png(path: &Path, width: u32, height: u32, bgra: &[u8]) -> Result<()
     encoder.set_depth(png::BitDepth::Eight);
     encoder.write_header()?.write_image_data(&rgba)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gliff_proto::{Codec, ServerMsg, SessionInfo, PROTOCOL_VERSION};
+    use gliff_transport::Framed;
+
+    /// Upstream's x264 High-profile test stream (64x64, IDR then P): its
+    /// first picture stays in OpenH264's reorder buffer.
+    const HIGH_PROFILE: &[u8] =
+        include_bytes!("../../../vendor/gliff/crates/gliff-va/src/h264/testdata/x264-64x64.264");
+
+    async fn high_profile_stream() -> Vec<u8> {
+        let p_slice = HIGH_PROFILE
+            .windows(4)
+            .position(|w| w[..3] == [0, 0, 1] && w[3] & 0x1f == 1)
+            .expect("a P slice");
+        let split = if HIGH_PROFILE[p_slice - 1] == 0 {
+            p_slice - 1
+        } else {
+            p_slice
+        };
+        let units = [
+            (&HIGH_PROFILE[..split], true),
+            (&HIGH_PROFILE[split..], false),
+        ];
+        let mut w = Framed::new(Vec::new());
+        w.write_msg(&ServerMsg::HelloAck {
+            version: PROTOCOL_VERSION,
+            session: SessionInfo {
+                headless: true,
+                output: "x".into(),
+            },
+            outputs: vec![],
+            features: vec![],
+        })
+        .await
+        .unwrap();
+        w.write_msg(&ServerMsg::StreamConfig {
+            codec: Codec::H264,
+            chroma: ChromaMode::Single420,
+            pipeline: None,
+            width: 64,
+            height: 64,
+            scale_milli: 1000,
+            extradata: vec![],
+            aux_extradata: None,
+            view_width: 64,
+            view_height: 64,
+            fps_cap: 30,
+        })
+        .await
+        .unwrap();
+        for (frame_id, (unit, keyframe)) in units.into_iter().enumerate() {
+            w.write_msg_with_payloads(
+                &ServerMsg::VideoFrame {
+                    frame_id: frame_id as u64,
+                    pts_us: 0,
+                    keyframe,
+                    damage: vec![],
+                    data_len: unit.len() as u32,
+                    aux_len: 0,
+                },
+                &[unit],
+            )
+            .await
+            .unwrap();
+        }
+        w.into_inner()
+    }
+
+    #[tokio::test]
+    async fn a_delayed_high_profile_picture_is_matched_to_its_frame() {
+        let manifest = describe(&high_profile_stream().await, json!({}), None)
+            .await
+            .unwrap();
+        let frames = manifest["frames"].as_array().unwrap();
+        assert_eq!(frames.len(), 2);
+        for f in frames {
+            assert_eq!(f["decoded_width"], 64, "{f}");
+            assert!(f["decoded_bgra_sha256"].is_string());
+        }
+    }
+
+    #[tokio::test]
+    async fn a_capture_cut_inside_a_frame_is_refused() {
+        let stream = high_profile_stream().await;
+        let err = describe(&stream[..stream.len() - 1], json!({}), None)
+            .await
+            .unwrap_err();
+        assert!(err.to_string().contains("ends inside a frame"), "{err}");
+    }
 }

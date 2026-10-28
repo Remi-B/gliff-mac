@@ -156,8 +156,9 @@ pub async fn record(opts: &mut Opts) -> Result<()> {
 }
 
 /// Length of the prefix of `raw` that ends right after the `frames`-th
-/// video frame, walking frame headers. Bytes read ahead are dropped.
-fn complete_messages(raw: &[u8], frames: u64) -> usize {
+/// video frame, or after its last complete frame, walking frame headers.
+/// Bytes read ahead are dropped.
+pub fn complete_messages(raw: &[u8], frames: u64) -> usize {
     let mut at = 0usize;
     let mut video = 0u64;
     while at + HEADER_LEN <= raw.len() {
