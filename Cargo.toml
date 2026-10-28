@@ -19,6 +19,12 @@ gliff-client-core = { path = "crates/gliff-client-core" }
 gliff-proto = { path = "vendor/gliff/crates/gliff-proto" }
 gliff-transport = { path = "vendor/gliff/crates/gliff-transport" }
 uniffi = { version = "=0.29.4", default-features = false }
+bytes = "1"
+minicbor = { version = "2", features = ["derive", "alloc"] }
+serde_json = "1"
+sha2 = "0.10"
+thiserror = "2"
+tokio = "1"
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "deny"

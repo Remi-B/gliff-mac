@@ -40,7 +40,10 @@ def main():
     members = {packages[item]["name"] for item in metadata["workspace_members"]}
     require(members == {"gliff-client-core", "gliff-mac-core", "gliff-uniffi-bindgen"},
             "Only app crates and the generator may be workspace members")
-    forbidden = ("gtk", "gdk", "wayland-", "hypr-", "gliff-vk", "gliff-va", "drm", "gbm")
+    # The fixture generator's separate workspace links gliff-sw/OpenH264;
+    # neither may reach the application graph.
+    forbidden = ("gtk", "gdk", "wayland-", "xkbcommon", "hypr-", "gliff-vk", "gliff-va",
+                 "gliff-sw", "gliff-server", "openh264", "drm", "gbm", "dbus")
     names = {package["name"] for package in packages.values()}
     require(not any(name.startswith(forbidden) for name in names),
             "Linux UI/video dependencies leaked into the app dependency graph")

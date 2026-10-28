@@ -1,6 +1,7 @@
 # Gliff macOS implementation plan
 
-Status: task 01 complete; tasks 02–13 planned. Updated on 2026-10-28.
+Status: task 01 complete; task 02 in review (live captures pending); tasks 03–13 planned.
+Updated on 2026-10-28.
 
 Planning location: this specification/plan/task collection is versioned under
 `docs/`, alongside the application build/development documentation.
@@ -98,13 +99,13 @@ as the initial baseline, then validate each subsequent pin explicitly.
 ## Ordered tasks
 
 Each task has scope, dependencies, deliverables, and acceptance criteria in its
-folder. Task 01 is **complete**, including local macOS build validation; the remaining tasks are **planned**. The order prioritizes repository ownership,
+folder. Task 01 is **complete**, including local macOS build validation; task 02 is **in review**; the remaining tasks are **planned**. The order prioritizes repository ownership,
 compatibility, and build risks before UI breadth.
 
 | # | Task | Depends on | Completion evidence |
 | --- | --- | --- | --- |
 | 01 | [setup-project-structure](01-setup-project-structure/README.md) | — | Fresh app history; pinned submodule; local fork backup; bootstrap/checks and universal Xcode build passed in the macOS VM |
-| 02 | [audit-upstream-protocol-and-portability](02-audit-upstream-protocol-and-portability/README.md) | 01 | Real contract fixtures; selected crates compile on macOS; platform boundary verified |
+| 02 | [audit-upstream-protocol-and-portability](02-audit-upstream-protocol-and-portability/README.md) | 01 | Real contract fixtures; selected crates compile on macOS; platform boundary verified — **in review**: boundary, contract and server-equivalent fixtures done; live captures pending |
 | 03 | [automate-upstream-sync-and-compatibility](03-automate-upstream-sync-and-compatibility/README.md) | 02 | Repeatable upstream bump/revert and compatibility CI; later gates added as implemented |
 | 04 | [build-rust-swift-bridge](04-build-rust-swift-bridge/README.md) | 02 | Repeatable bindings/XCFramework and Swift import/callback smoke test |
 | 05 | [implement-ssh-session](05-implement-ssh-session/README.md) | 03, 04 | Authenticated handshake, bounded video delivery, acknowledgments and clean cancellation |
@@ -162,7 +163,8 @@ this plan: development is running on Linux. Task 01 used an isolated temporary
 Rust installation for portable checks; Apple builds and runtime checks remain pending.
 
 Task 01 proposes macOS 13.0, Rust 1.90.0, UniFFI 0.29.4 and Xcode 16.4 / Swift 6
-language mode; task 02 confirms the Apple dependency boundary with actual builds.
+language mode; task 02 confirmed the Apple dependency boundary with release builds for
+both targets (minos 13.0) and found no Linux stack in the app graph.
 Task 09 settles keyboard-layout parity and macOS-reserved shortcuts. Task
 13 settles signing identity and distribution details. Interactive password/MFA,
 Mac App Store sandboxing, IME text protocols, audio, and new video codecs require
