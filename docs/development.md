@@ -1,5 +1,8 @@
 # Development
 
+For a local macOS build guest on this Linux MacBook, see the
+[VM setup procedure and current status](macos-vm/README.md).
+
 ## Toolchains and platform policy
 
 - Rust **1.90.0**, pinned in `rust-toolchain.toml`, with rustfmt and Clippy.

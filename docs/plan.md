@@ -1,6 +1,6 @@
 # Gliff macOS implementation plan
 
-Status: task 01 in progress; tasks 02–13 planned. Updated on 2026-10-28.
+Status: task 01 complete; tasks 02–13 planned. Updated on 2026-10-28.
 
 Planning location: this specification/plan/task collection is versioned under
 `docs/`, alongside the application build/development documentation.
@@ -34,9 +34,9 @@ is reapplied locally on that new history. See task 01's
 [implementation record](setup-project-structure/implementation-record.md) for the
 current state, backup locations and validation evidence.
 
-On inspection, this checkout's HEAD and upstream `main` both resolve to
+At the initial inspection, the original fork's HEAD and upstream `main` both resolved to
 [`58c742452ded3f10a2ce61f60eb4845f18205e29`](https://github.com/omacom/gliff/commit/58c742452ded3f10a2ce61f60eb4845f18205e29)
-(Gliff 0.4.1). There is no macOS project or `gliff-core` crate. The reusable crates
+(Gliff 0.4.1). That snapshot had no macOS project or `gliff-core` crate. The reusable crates
 are separate, but session orchestration in `crates/gliff/src/net.rs` also owns Linux
 video decoding, GTK-facing messages, and the Hyprland keymap integration. Importing
 that binary wholesale would bring the wrong platform dependencies. Treat this SHA
@@ -98,12 +98,12 @@ as the initial baseline, then validate each subsequent pin explicitly.
 ## Ordered tasks
 
 Each task has scope, dependencies, deliverables, and acceptance criteria in its
-folder. Task 01 is **in progress**; the remaining tasks are **planned**. The order prioritizes repository ownership,
+folder. Task 01 is **complete**, including local macOS build validation; the remaining tasks are **planned**. The order prioritizes repository ownership,
 compatibility, and build risks before UI breadth.
 
 | # | Task | Depends on | Completion evidence |
 | --- | --- | --- | --- |
-| 01 | [setup-project-structure](setup-project-structure/README.md) | — | Fresh app history; pinned submodule; local fork backup; clean bootstrap |
+| 01 | [setup-project-structure](setup-project-structure/README.md) | — | Fresh app history; pinned submodule; local fork backup; bootstrap/checks and universal Xcode build passed in the macOS VM |
 | 02 | [audit-upstream-protocol-and-portability](audit-upstream-protocol-and-portability/README.md) | 01 | Real contract fixtures; selected crates compile on macOS; platform boundary verified |
 | 03 | [automate-upstream-sync-and-compatibility](automate-upstream-sync-and-compatibility/README.md) | 02 | Repeatable upstream bump/revert and compatibility CI; later gates added as implemented |
 | 04 | [build-rust-swift-bridge](build-rust-swift-bridge/README.md) | 02 | Repeatable bindings/XCFramework and Swift import/callback smoke test |

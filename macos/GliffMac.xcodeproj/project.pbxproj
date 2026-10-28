@@ -15,7 +15,7 @@
 /* Begin PBXFileReference section */
 		3CA50BBDC2E778F6A6003AF9 /* GliffMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GliffMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CB8531E79195B0CF83A50139 /* GliffMacApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GliffMacApp.swift; sourceTree = "<group>"; };
-		F267253A45FBAA629A01439F /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
+		F267253A45FBAA629A01439F /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */

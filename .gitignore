@@ -6,5 +6,7 @@
 **/DerivedData/
 **/xcuserdata/
 *.xcuserstate
+__pycache__/
+*.pyc
 /macos/Packages/GliffCore/Sources/GliffCore/Generated/
 /macos/Packages/GliffCore/Artifacts/

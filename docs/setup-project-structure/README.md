@@ -1,7 +1,7 @@
 # 01 — setup-project-structure
 
-Status: in progress. Dependencies: none. See the
-[implementation record](implementation-record.md) for completed work and pending gates.
+Status: complete, including local macOS build validation. Dependencies: none. See the
+[implementation record](implementation-record.md) for evidence and remaining runtime/CI limits.
 
 ## Outcome
 
@@ -38,8 +38,10 @@ inside the app repository under `docs/`.
   inherited Linux-only CI with a minimal app check; expand it in tasks 02–03.
 - [x] Write root app development instructions, attribution, workspace/lockfile
   ownership, generated artifact policy, and the migration rollback procedure.
-- [ ] Execute the Apple CI/build checks and validate the real Mac workspace/app.
-  Linux Rust checks and static Xcode parsing do not establish Apple build success.
+- [x] Execute the Apple build checks in the installed macOS VM with Xcode 16.4:
+  Rust native/cross-target checks, Swift package and universal app build pass.
+  The generated app launches in the Intel guest. Hosted CI and Apple Silicon
+  runtime validation have not been executed; those are separate checks.
 
 ## Deliverables and acceptance
 
