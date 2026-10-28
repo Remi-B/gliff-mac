@@ -30,15 +30,23 @@ It does not install rustup or Xcode, change your selected Xcode, or advance upst
 scripts/check.sh
 ```
 
-On all platforms this checks the source pin/workspace, rustfmt, Clippy, Cargo test
-harnesses and whitespace. There are no session/media behavior tests in the initial
-scaffold. On Macs it also checks both Apple Rust targets, builds the Swift package
-and builds the Xcode app for both architectures. It reports skipped Apple checks
-on Linux explicitly. CI runs the same entrypoints on Linux and macOS.
+On all platforms this checks the source pin/workspace, rustfmt, Clippy, Cargo tests
+and whitespace. The tests include the client contract replay harness over the committed
+[fixtures](../tests/fixtures/README.md) and a mock server peer. The same checks run for
+the separate `tools/fixture-gen` workspace, followed by `scripts/generate-fixtures.sh
+--check`. On Macs it also checks both Apple Rust targets, runs
+`scripts/audit-portability.sh` (release builds, dependency tree and archive checks,
+logs under `build/portability/`), builds the Swift package and builds the Xcode app for
+both architectures. It reports skipped Apple checks on Linux explicitly. CI runs the
+same entrypoints on Linux and macOS.
+
+`tools/fixture-gen` is its own Cargo workspace with its own lockfile: it links upstream's
+CPU encoder (`gliff-sw`, OpenH264 built from source) to encode and verify fixtures, and
+must never enter the application graph.
 
 The structure check verifies the gitlink, `upstream-revision`, clean vendor checkout,
 source URL, three app workspace members, real vendor dependency paths, and absence
-of Linux UI/video crates in the resolved application graph. Upstream tests are not
+of Linux UI/video/encoder crates in the resolved application graph. Upstream tests are not
 mistaken for app workspace members or run implicitly by `cargo test --workspace`.
 
 ## Application shell and bridge
