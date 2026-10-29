@@ -27,18 +27,25 @@ It does not install rustup or Xcode, change your selected Xcode, or advance upst
 ## Checks
 
 ```bash
-scripts/check.sh
+scripts/check.sh            # every gate this host can run
+python3 scripts/gates.py --list
 ```
 
-On all platforms this checks the source pin/workspace, rustfmt, Clippy, Cargo tests
-and whitespace. The tests include the client contract replay harness over the committed
-[fixtures](../tests/fixtures/README.md) and a mock server peer. The same checks run for
-the separate `tools/fixture-gen` workspace, followed by `scripts/generate-fixtures.sh
---check`. On Macs it also checks both Apple Rust targets, runs
-`scripts/audit-portability.sh` (release builds, dependency tree and archive checks,
-logs under `build/portability/`), builds the Swift package and builds the Xcode app for
-both architectures. It reports skipped Apple checks on Linux explicitly. CI runs the
-same entrypoints on Linux and macOS.
+`scripts/check.sh` runs `scripts/gates.py`, which reports every compatibility gate as
+**passed**, **failed** or **unavailable** (with the reason) and writes
+`build/gates/<os>-<arch>.json`; it fails when a gate fails. On all platforms: source
+pin/workspace structure, the [compatibility records](../tests/compatibility/README.md),
+the reviewed protocol wire surface, rustfmt, Clippy, Cargo tests (including the client
+contract replay harness over the committed [fixtures](../tests/fixtures/README.md) and a
+mock server peer) for the app and the separate `tools/fixture-gen` workspace,
+`scripts/generate-fixtures.sh --check` and whitespace. On Macs also both Apple Rust
+targets, `scripts/audit-portability.sh` (release builds, dependency tree and archive
+checks, logs under `build/portability/`), the Swift package and the Xcode app for both
+architectures; on Linux these are reported unavailable. Upstream's own workspace is
+checked with `--upstream-linux` in its own CI job; live-host evidence comes from
+`scripts/live-host-check.sh`. Gates of later tasks are listed as unavailable (planned)
+until implemented. CI runs the same entrypoint on Linux and macOS and uploads the
+summaries.
 
 `tools/fixture-gen` is its own Cargo workspace with its own lockfile: it links upstream's
 CPU encoder (`gliff-sw`, OpenH264 built from source) to encode and verify fixtures, and
@@ -81,16 +88,19 @@ dependencies. Normal build/check commands use `--locked`; when changing dependen
 refresh the app lockfile intentionally and review its diff. The Cargo resolver
 prefers versions compatible with the declared Rust minimum.
 
-For a reviewed upstream update, choose an explicit full SHA, check it out detached
-in `vendor/gliff`, update `upstream-revision`, stage the gitlink, refresh the parent
-lockfile only as needed, and run the checks/compatibility tests. The structure check
-expects the staged or committed gitlink and source record to agree. Normal bootstrap
-uses `git submodule update --init --recursive --checkout` and never `--remote`.
+For a reviewed upstream update, run `python3 scripts/upstream.py update <full-sha>`: it
+checks the clean pin, fetches upstream, refuses untrusted, stale or abbreviated
+candidates, checks the commit out detached in `vendor/gliff`, updates `upstream-revision`,
+stages the gitlink, refreshes the parent lockfiles only as Cargo requires, adds an
+unqualified candidate record and writes a focused range report. Then run the checks and
+live test and record the evidence. The [update runbook](03-automate-upstream-sync-and-compatibility/upstream-update-workflow.md)
+covers review, records and rollback; the `Upstream candidate` workflow does the same
+daily and on demand. Normal bootstrap uses `git submodule update --init --recursive
+--checkout` and never `--remote`.
 
 Do not patch vendor files in build scripts. Record any temporary upstream fork/
-patch branch and its removal condition explicitly. Task 03 adds candidate-update
-automation and a server compatibility matrix; native/live gates arrive with their
-corresponding features.
+patch branch and its removal condition explicitly. Native/media gates arrive with their
+corresponding features (see `scripts/gates.py --list`).
 
 ## Artifacts and permissions
 
