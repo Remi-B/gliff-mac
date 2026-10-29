@@ -40,8 +40,8 @@ contract replay harness over the committed [fixtures](../tests/fixtures/README.m
 mock server peer) for the app and the separate `tools/fixture-gen` workspace,
 `scripts/generate-fixtures.sh --check` and whitespace. On Macs also both Apple Rust
 targets, `scripts/audit-portability.sh` (release builds, dependency tree and archive
-checks, logs under `build/portability/`), the Swift package and the Xcode app for both
-architectures; on Linux these are reported unavailable. Upstream's own workspace is
+checks, logs under `build/portability/`), the bridge build, the Swift package and its
+bridge tests, and the Xcode app for both architectures; on Linux these are reported unavailable. Upstream's own workspace is
 checked with `--upstream-linux` in its own CI job; live-host evidence comes from
 `scripts/live-host-check.sh`. Gates of later tasks are listed as unavailable (planned)
 until implemented. CI runs the same entrypoint on Linux and macOS and uploads the
@@ -59,22 +59,55 @@ mistaken for app workspace members or run implicitly by `cargo test --workspace`
 ## Application shell and bridge
 
 ```bash
-scripts/build-app.sh
+scripts/bootstrap.sh       # once per clone: toolchain, Apple targets, submodule
+scripts/build-bridge.sh    # Rust bridge → GliffCore package artifacts
+swift test --package-path macos/Packages/GliffCore
+scripts/build-app.sh       # runs build-bridge.sh, then the universal Xcode build
 ```
 
-This Mac-only command builds the checked-in project/shared scheme without signing,
-for `arm64` and `x86_64`, under `build/DerivedData/`. It does not package a release.
-The initial app has no connection controls or fake session functionality.
+`scripts/build-bridge.sh` is the single bridge entrypoint (Mac only, needs full Xcode for
+`xcodebuild -create-xcframework`, `lipo` and `otool`). From a clean recursive clone it:
 
-`macos/Packages/GliffCore` is a local Swift package integrated into the Xcode target.
-Its current namespace builds without generated artifacts. Task 04 adds generated
-Swift/C sources, an XCFramework binary target and the real import/callback smoke
-test. The Rust facade already exposes build provenance and uses supported UniFFI
-proc-macro scaffolding; no full session API is claimed yet.
+1. builds `gliff-mac-core` in release for `aarch64-apple-darwin` and `x86_64-apple-darwin`
+   with `MACOSX_DEPLOYMENT_TARGET=13.0` and `--locked`;
+2. builds the app-owned generator `tools/uniffi-bindgen` (UniFFI 0.29.4, the runtime's
+   exact version) and generates Swift bindings, the C header and module map from each
+   static archive in library mode, with `uniffi.toml` (`GliffCore` / `GliffCoreFFI`); the
+   two outputs must be identical;
+3. merges both archives with `lipo` into one universal archive, checks its two slices and
+   that no object requires a macOS newer than 13.0 (Rust's prebuilt `compiler_builtins`
+   objects target 11.0 on arm64);
+4. packages it with the header and `module.modulemap` as one
+   `macos-arm64_x86_64` library in `GliffCoreFFI.xcframework`.
 
-Task 04 will automate Apple static-library builds and framework generation. The
-`cdylib` output supports bindgen metadata inspection; the app will link the static
-library. Do not manually drag generated files into Xcode or commit build products.
+Outputs, all ignored by Git and rebuilt from scratch on each run:
+
+| Path | Content |
+| --- | --- |
+| `macos/Packages/GliffCore/Artifacts/GliffCoreFFI.xcframework` | Universal static library, header, module map |
+| `macos/Packages/GliffCore/Artifacts/provenance.json` | Source SHA and dirtiness, upstream pin, `rustc`, UniFFI, Xcode, deployment target, slices, SHA-256 of archive, bindings and header |
+| `macos/Packages/GliffCore/Sources/GliffCore/Generated/GliffCore.swift` | Generated Swift bindings |
+| `build/bridge/` | Per-architecture bindings, headers, universal archive |
+| `target/<triple>/release/libgliff_mac_core.a` | Cargo's per-architecture archives (incremental cache) |
+
+Run it before resolving the `GliffCore` package (SwiftPM or Xcode: the package references
+a local binary artifact, so resolution fails until it exists) and after any change to the
+bridge crates, `uniffi.toml`, `Cargo.lock`, the Rust toolchain or Xcode. For a clean
+regeneration delete `build/bridge`, `macos/Packages/GliffCore/Artifacts` and
+`Sources/GliffCore/Generated` (the script already does) or `target/` as well. Do not drag
+generated files into Xcode or commit them. `gliff-mac-core` builds `rlib` (Rust tests) and
+`staticlib` (app linkage) only; library-mode generation reads the static archive, so no
+dylib is produced. The Swift package links the archive's native dependency `libiconv`.
+
+The `GliffCore` package has the `GliffCoreFFI` binary target, the `GliffCore` target
+(generated bindings plus `SessionRelay`, which splits callbacks between the decoder's
+delivery thread and the main actor) and the `GliffCoreTests` Swift Testing suite. The
+Xcode app links the package and shows the core's build information. The threading,
+ordering, budget and teardown rules are in the [bridge contract](04-build-rust-swift-bridge/bridge-contract.md).
+
+Gates: `bridge-build` (the script), `swift-package` (package and tests built for arm64
+and x86_64), `bridge-import` (`swift test` on the host architecture) and `macos-app`.
+Intel runtime is not covered on Apple silicon without Rosetta; it is a hardware gate.
 
 ## Workspaces and dependency updates
 

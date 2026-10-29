@@ -11,7 +11,7 @@ bytes.workspace = true
 gliff-proto.workspace = true
 gliff-transport.workspace = true
 thiserror.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["io-util", "macros", "sync", "time"] }
 
 [dev-dependencies]
 minicbor.workspace = true

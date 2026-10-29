@@ -349,6 +349,10 @@ def merge_gates(gate_files, live_files):
                            "reason": "no supplied summary ran this gate"}
     for entry in merged.values():
         entry["required"] = entry["id"] in required_gates()
+    return (summaries, merged) + qualification(merged)
+
+
+def qualification(merged):
     required = [g for g in merged.values() if g["required"]]
     failed = [g["id"] for g in required if g["status"] == "failed"]
     missing = [g["id"] for g in required if g["status"] == "unavailable"]
@@ -358,7 +362,7 @@ def merge_gates(gate_files, live_files):
         result, reason = "unqualified", "required gate(s) unavailable: " + ", ".join(missing)
     else:
         result, reason = "qualified", "every required gate passed; human review decides the merge"
-    return summaries, merged, result, reason
+    return result, reason
 
 
 def gates_markdown(merged, result, reason):
@@ -406,7 +410,7 @@ def require_current_evidence(name, sha, dirty):
 
 
 def cmd_record(args):
-    summaries, merged, result, reason = merge_gates(args.gates, args.live_evidence)
+    summaries, merged, _, _ = merge_gates(args.gates, args.live_evidence)
     current = pin()
     for summary in summaries:
         if summary["context"]["upstream_sha"] != current:
@@ -421,8 +425,6 @@ def cmd_record(args):
         require_current_evidence(name, sha, dirty)
     record = {
         "role": args.role,
-        "result": result,
-        "reason": reason,
         "date": now(),
         "upstream": {"sha": current, "describe": describe(current),
                      "lockfile_sha256": sha256(VENDOR / "Cargo.lock")},
@@ -435,7 +437,6 @@ def cmd_record(args):
                        "date": s["context"]["date"]} for s in summaries],
         "servers": [{**live["server"], "date": live["date"], "status": live["status"],
                      "session": live["session"]} for live in lives],
-        "gates": {g["id"]: g["status"] for g in merged.values()},
     }
     matrix = json.loads(MATRIX.read_text())
     matrix["records"][args.role] = record
@@ -443,6 +444,20 @@ def cmd_record(args):
         candidate = matrix["records"].get("candidate")
         if candidate and candidate["upstream"]["sha"] == current:
             matrix["records"]["candidate"] = None
+    # The summaries ran `compatibility-records` against the records this
+    # command replaces (stale after a lockfile change or a newly required
+    # gate): judge it on the matrix being written instead.
+    record["gates"] = {g["id"]: g["status"] for g in merged.values()}
+    record["required"] = sorted(required_gates())
+    problems = record_problems(matrix, ignore_qualification_of=args.role)
+    gate = merged.setdefault("compatibility-records", {
+        "id": "compatibility-records", "title": "compatibility-records", "platforms": {}})
+    gate.update(required=True, status="failed" if problems else "passed",
+                reason="; ".join(problems) or None)
+    record["gates"]["compatibility-records"] = gate["status"]
+    result, reason = qualification(merged)
+    record = {"role": record.pop("role"), "result": result, "reason": reason, **record}
+    matrix["records"][args.role] = record
     MATRIX.write_text(json.dumps(matrix, indent=2) + "\n")
     print("Recorded {}: {} ({}).".format(args.role, result, reason))
     return 0
@@ -451,8 +466,26 @@ def cmd_record(args):
 # --- check ---------------------------------------------------------------------
 
 
+# Gates required before records listed their own `required` set (task 03).
+LEGACY_REQUIRED = (
+    "structure", "compatibility-records", "protocol-surface", "rust-format", "rust-lint",
+    "rust-tests", "contract-fixtures", "whitespace", "apple-rust-arm64", "apple-rust-x86_64",
+    "portability-audit", "swift-package", "macos-app", "upstream-linux", "live-host")
+
+
 def cmd_check(_args):
-    matrix = json.loads(MATRIX.read_text())
+    problems = record_problems(json.loads(MATRIX.read_text()))
+    if problems:
+        raise SystemExit("Compatibility records are out of date with the checkout:\n  - " +
+                         "\n  - ".join(problems) +
+                         "\nAfter an intentional pin, lockfile or wire-surface change, or a "
+                         "newly required gate, re-run the gates and "
+                         "`scripts/upstream.py record current-pin --gates ...`.")
+    print("Compatibility records match upstream {} and both lockfiles.".format(pin()[:12]))
+    return 0
+
+
+def record_problems(matrix, ignore_qualification_of=None):
     records = matrix.get("records", {})
     problems = []
     if set(records) != set(ROLES):
@@ -484,19 +517,23 @@ def cmd_check(_args):
     for role, entry in records.items():
         if entry is None:
             continue
+        if role == ignore_qualification_of:
+            # Being recorded: its result is computed from these problems.
+            continue
         if entry.get("result") not in ("qualified", "unqualified", "failed"):
             problems.append("{}: result must be qualified, unqualified or failed".format(role))
         gates = entry.get("gates", {})
-        if entry.get("result") == "qualified" and any(
-                gates.get(gate) != "passed" for gate in required_gates()):
-            problems.append("{}: qualified without every required gate passed".format(role))
-    if problems:
-        raise SystemExit("Compatibility records are out of date with the checkout:\n  - " +
-                         "\n  - ".join(problems) +
-                         "\nAfter an intentional pin, lockfile or wire-surface change, re-run "
-                         "the gates and `scripts/upstream.py record current-pin --gates ...`.")
-    print("Compatibility records match upstream {} and both lockfiles.".format(current[:12]))
-    return 0
+        # A record is judged against the gates required when it was made, never
+        # fewer than task 03's; the record standing for the pin in use (current
+        # pin, or a candidate at the pin) against every gate required now.
+        required = set(LEGACY_REQUIRED) | set(entry.get("required", ()))
+        if entry is record:
+            required |= required_gates()
+        missing = sorted(g for g in required if gates.get(g) != "passed")
+        if entry.get("result") == "qualified" and missing:
+            problems.append("{}: qualified without every required gate passed ({})".format(
+                role, ", ".join(missing)))
+    return problems
 
 
 def required_gates():

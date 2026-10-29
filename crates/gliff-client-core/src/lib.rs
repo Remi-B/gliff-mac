@@ -2,12 +2,14 @@
 //!
 //! Upstream owns wire types, framing, SSH transport and clipboard transfers.
 //! This crate adds the client-side contract the native app depends on: the
-//! handshake and payload association of server messages, and the video
-//! stream rules checked before frames reach the native decoder. It does not
-//! decode video or depend on the upstream Linux client binary.
+//! handshake and payload association of server messages, the video stream
+//! rules checked before frames reach the native decoder, and a
+//! transport-independent session driver. It does not decode video or depend
+//! on the upstream Linux client binary.
 
 pub mod annexb;
 pub mod events;
+pub mod session;
 pub mod video;
 
 /// The wire version supplied by the pinned upstream protocol crate.

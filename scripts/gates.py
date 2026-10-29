@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent
 MAC = platform.system() == "Darwin"
 FIXTURE_GEN = "tools/fixture-gen/Cargo.toml"
 UPSTREAM = "vendor/gliff/Cargo.toml"
+PACKAGE = "macos/Packages/GliffCore"
 APPLE_ENV = {"MACOSX_DEPLOYMENT_TARGET": "13.0"}
 
 # id, title, required for qualification, availability, commands.
@@ -62,8 +63,13 @@ GATES = [
        "x86_64-apple-darwin"]]),
     ("portability-audit", "Release builds and dependency audit for both Apple targets", True,
      "macos", [["scripts/audit-portability.sh"]]),
-    ("swift-package", "GliffCore Swift package builds", True, "macos",
-     [["swift", "build", "--package-path", "macos/Packages/GliffCore"]]),
+    ("bridge-build", "Bridge archives, generated bindings and universal XCFramework", True,
+     "macos", [["scripts/build-bridge.sh"]]),
+    ("swift-package", "GliffCore Swift package builds for arm64 and x86_64", True, "macos",
+     [["swift", "build", "--package-path", PACKAGE, "--arch", "arm64", "--build-tests"],
+      ["swift", "build", "--package-path", PACKAGE, "--arch", "x86_64", "--build-tests"]]),
+    ("bridge-import", "Generated Swift bindings import and callback smoke test", True, "macos",
+     [["swift", "test", "--package-path", PACKAGE]]),
     ("macos-app", "Universal Xcode app build (arm64 + x86_64)", True, "macos",
      [["scripts/build-app.sh"]]),
     ("upstream-linux", "Upstream workspace fmt/clippy/tests with its own lockfile", True,
@@ -74,8 +80,6 @@ GATES = [
       ["cargo", "test", "--manifest-path", UPSTREAM, "--workspace", "--locked"]]),
     ("live-host", "Live session against the unmodified server on Linux/Hyprland", True, "live",
      []),
-    ("bridge-import", "Generated Swift bindings import and callback smoke test", False,
-     "planned:04", []),
     ("ssh-session", "Real SSH session handshake, acknowledgments and cancellation", False,
      "planned:05", []),
     ("video-decode", "VideoToolbox Single420 decode against fixtures", False, "planned:07", []),

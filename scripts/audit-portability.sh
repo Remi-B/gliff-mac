@@ -9,7 +9,7 @@ cd "$GLIFF_ROOT"
 require_command cargo
 require_macos
 require_command lipo
-require_command vtool
+require_command otool
 
 export MACOSX_DEPLOYMENT_TARGET=13.0
 out=build/portability
@@ -46,15 +46,15 @@ for target in aarch64-apple-darwin x86_64-apple-darwin; do
     exit 1
   fi
   lib="target/$target/release/libgliff_mac_core.a"
-  dylib="target/$target/release/libgliff_mac_core.dylib"
   {
     printf '== %s ==\n' "$target"
     printf 'build: ok (%s)\n' "$(tail -1 "$log" | sed 's/^ *//')"
     printf 'resolved crates (normal+build): %s, none forbidden\n' "$(wc -l < "$names" | tr -d ' ')"
     printf 'upstream crates: %s\n' "$(grep -E '^gliff-(proto|transport)$' "$names" | tr '\n' ' ')"
     printf 'staticlib: %s\n' "$(lipo -info "$lib" | sed 's/.*: //')"
-    printf 'dylib: %s\n' "$(lipo -info "$dylib" | sed 's/.*: //')"
-    vtool -show-build "$dylib" | grep -E 'minos|sdk' | sed 's/^ */  /'
+    # Our objects carry the deployment target; Rust's prebuilt
+    # compiler_builtins objects an older minimum.
+    printf '  minos: %s\n' "$(otool -l "$lib" | awk '/LC_BUILD_VERSION/{b=1} b&&/minos/{print $2; b=0}' | sort -uV | tr '\n' ' ')"
     printf '\n'
   } >> "$summary"
 done

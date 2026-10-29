@@ -32,9 +32,13 @@ checkout: a different pin, upstream lockfile, app lockfile or wire-surface recor
 such an intentional change, re-run the gates and record again (below). A staged
 candidate record stands in for the current pin until its gates have been recorded.
 
-Planned gates (bridge import, session, video, Metal, input, displays, clipboard,
-acceptance) are listed as unavailable and not required until their task implements them;
-that task then marks them required in `scripts/gates.py`. Merge policy stays human review.
+Planned gates (session, video, Metal, input, displays, clipboard, acceptance) are listed
+as unavailable and not required until their task implements them; that task then marks
+them required in `scripts/gates.py` and records the current pin again. Each record lists
+the gates required when it was made (`required`; records without it use task 03's set),
+and is judged against that list. The current-pin record must also cover every gate
+required now. `record` judges `compatibility-records` on the matrix it writes, since the
+summaries ran it against the record being replaced. Merge policy stays human review.
 
 ## Recording evidence
 
