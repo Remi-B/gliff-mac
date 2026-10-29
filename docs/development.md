@@ -179,3 +179,11 @@ evidence, not VideoToolbox decoder validation. For GUI environment validation,
 launch a temporary app wrapper through **Finder**. A shell `open` invocation can
 pass the caller's environment, so it does not by itself prove Finder's PATH or
 agent behavior. Never capture the physical display during these checks.
+
+SSH policy is enforced through a private session-scoped config included by every
+OpenSSH-generated ProxyJump hop. It includes the ordinary user and system config
+after mandatory verification, batch-authentication and forwarding settings. No
+user SSH files are modified. Agent authentication is supported; forwarding the
+agent or X11 connection to the server is disabled. Proxy helpers belong to the
+session's process group and are terminated during cancellation. Custom helpers
+that deliberately daemonize into a separate session remain trusted user config.

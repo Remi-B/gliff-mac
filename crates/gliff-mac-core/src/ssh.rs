@@ -1,14 +1,71 @@
 //! System OpenSSH adapter. No local shell, raw flags, or raw remote commands.
 use crate::{session::Item, types::*};
 use gliff_client_core::session::{self as core, Control, Driver};
-use std::{process::Stdio, sync::Arc};
+use rustix::process::{kill_process_group, test_kill_process_group, Pid, Signal};
+use std::{io::Write, os::unix::process::CommandExt, path::Path, process::Stdio, sync::Arc};
 use tokio::{io::AsyncReadExt, process::Command, sync::mpsc};
 
 fn quote(word: &str) -> String {
     format!("'{}'", word.replace('\'', "'\\''"))
 }
 
-fn command(target: &ConnectionTarget) -> Command {
+// -F is propagated by OpenSSH to every generated ProxyJump command. Apply
+// invariant options before including the ordinary user and system configs,
+// so aliases, identities and jump chains retain their normal configuration.
+fn policy_config(user: &str, system: &str) -> std::io::Result<tempfile::NamedTempFile> {
+    let mut file = tempfile::Builder::new().prefix("gliff-ssh-").tempfile()?;
+    writeln!(file, "Host *")?;
+    for option in [
+        "BatchMode yes",
+        "StrictHostKeyChecking yes",
+        "ConnectTimeout 10",
+        "ConnectionAttempts 1",
+        "ControlMaster no",
+        "ControlPath none",
+        "PermitLocalCommand no",
+        "ClearAllForwardings yes",
+        "ForwardAgent no",
+        "ForwardX11 no",
+        "ForwardX11Trusted no",
+        "ForkAfterAuthentication no",
+        "StdinNull no",
+        "SessionType default",
+        "RequestTTY no",
+    ] {
+        writeln!(file, "    {option}")?;
+    }
+    // Includes can leave their last Host/Match inactive: reset between files.
+    writeln!(file, "Include {user}\nHost *\nInclude {system}")?;
+    file.flush()?;
+    Ok(file)
+}
+
+struct ProcessGroup {
+    pid: Pid,
+    armed: bool,
+}
+
+impl ProcessGroup {
+    async fn terminate(&self) {
+        let _ = kill_process_group(self.pid, Signal::TERM);
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(200);
+        while test_kill_process_group(self.pid).is_ok() && tokio::time::Instant::now() < deadline {
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+        let _ = kill_process_group(self.pid, Signal::KILL);
+    }
+}
+
+impl Drop for ProcessGroup {
+    fn drop(&mut self) {
+        // Also covers a task panic/abort while a proxy helper is running.
+        if self.armed {
+            let _ = kill_process_group(self.pid, Signal::KILL);
+        }
+    }
+}
+
+fn command(target: &ConnectionTarget, policy: &Path) -> Command {
     let ConnectionTarget::Ssh {
         host,
         user,
@@ -21,6 +78,7 @@ fn command(target: &ConnectionTarget) -> Command {
         unreachable!()
     };
     let mut cmd = Command::new("/usr/bin/ssh");
+    cmd.arg("-F").arg(policy);
     cmd.args([
         "-T",
         "-oBatchMode=yes",
@@ -33,6 +91,9 @@ fn command(target: &ConnectionTarget) -> Command {
         "-oControlPath=none",
         "-oPermitLocalCommand=no",
         "-oClearAllForwardings=yes",
+        "-oForwardAgent=no",
+        "-oForwardX11=no",
+        "-oForwardX11Trusted=no",
     ]);
     if let Some(user) = user {
         cmd.args(["-l", user]);
@@ -79,7 +140,17 @@ pub(crate) async fn run(
     tx: mpsc::Sender<Item>,
     control: Arc<Control>,
 ) -> SessionEnd {
-    run_command(command(&target), config, driver, tx, control).await
+    let policy = match policy_config("~/.ssh/config", "/etc/ssh/ssh_config") {
+        Ok(file) => file,
+        Err(_) => {
+            control.finish();
+            return SessionEnd::Failed { error: GliffError::Transport {
+                message: "Cannot create the private SSH policy file. Check temporary-directory access.".into(),
+            }};
+        }
+    };
+    // Keep the policy file alive until SSH and all its jump helpers stop.
+    run_command(command(&target, policy.path()), config, driver, tx, control).await
 }
 
 async fn run_command(
@@ -93,6 +164,7 @@ async fn run_command(
         control.finish();
         return SessionEnd::Cancelled;
     }
+    command.as_std_mut().process_group(0);
     let mut child = match command.spawn() {
         Ok(child) => child,
         Err(_) => {
@@ -104,6 +176,10 @@ async fn run_command(
                 },
             };
         }
+    };
+    let mut group = ProcessGroup {
+        pid: Pid::from_raw(child.id().expect("spawned child") as i32).expect("positive pid"),
+        armed: true,
     };
     let mut stderr = child.stderr.take().expect("piped stderr");
     let drain = tokio::spawn(async move {
@@ -134,25 +210,19 @@ async fn run_command(
         match tokio::time::timeout(std::time::Duration::from_millis(200), child.wait()).await {
             Ok(status) => status,
             Err(_) => {
-                let _ = child.start_kill();
+                group.terminate().await;
                 child.wait().await
             }
         }
     } else {
-        let _ = child.start_kill();
+        group.terminate().await;
         child.wait().await
     };
+    // A proxy can outlive even a normally exited SSH parent.
+    group.terminate().await;
+    group.armed = false;
     // A remote descendant can inherit stderr. Abort and join rather than wait forever.
-    let mut drain = drain;
-    let diagnostics =
-        match tokio::time::timeout(std::time::Duration::from_secs(1), &mut drain).await {
-            Ok(Ok(bytes)) => bytes,
-            _ => {
-                drain.abort();
-                let _ = drain.await;
-                Vec::new()
-            }
-        };
+    let diagnostics = finish_diagnostics(drain).await;
     match result {
         Ok(core::SessionEnd::Cancelled) => SessionEnd::Cancelled,
         Ok(core::SessionEnd::Closed)
@@ -182,6 +252,17 @@ async fn run_command(
     }
 }
 
+async fn finish_diagnostics(mut drain: tokio::task::JoinHandle<Vec<u8>>) -> Vec<u8> {
+    match tokio::time::timeout(std::time::Duration::from_secs(1), &mut drain).await {
+        Ok(Ok(bytes)) => bytes,
+        _ => {
+            drain.abort();
+            let _ = drain.await;
+            Vec::new()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -203,7 +284,7 @@ mod tests {
             headless: true,
         };
         target.validate().unwrap();
-        let cmd = command(&target);
+        let cmd = command(&target, Path::new("/tmp/policy"));
         assert_eq!(cmd.as_std().get_program(), "/usr/bin/ssh");
         let args: Vec<_> = cmd
             .as_std()
@@ -211,6 +292,8 @@ mod tests {
             .map(|s| s.to_str().unwrap())
             .collect();
         assert!(args.contains(&"-oStrictHostKeyChecking=yes"));
+        assert!(args.contains(&"-oForwardAgent=no"));
+        assert!(args.contains(&"-oForwardX11=no"));
         assert_eq!(args.last(), Some(&"exec '/tmp/a'\\''b' --stdio --headless"));
     }
     #[test]
@@ -228,11 +311,155 @@ mod tests {
             assert!(!message.contains("secret"));
         }
     }
+
+    #[tokio::test]
+    async fn jump_hops_share_the_policy_and_keep_host_specific_config() {
+        let mut user = tempfile::NamedTempFile::new().unwrap();
+        writeln!(user, "Host destination\n HostName 127.0.0.1\n User endpoint\n Port 2222\n IdentityFile /tmp/endpoint-key\n ProxyJump jump\nHost jump\n HostName 127.0.0.1\n User jumper\n Port 2200\n IdentityFile /tmp/jump-key\nHost *\n BatchMode no\n StrictHostKeyChecking no\n ForwardAgent yes\n ForwardX11 yes\n ForwardX11Trusted yes\nHost unmatched").unwrap();
+        let mut system = tempfile::NamedTempFile::new().unwrap();
+        writeln!(system, "Host *\n ServerAliveInterval 7").unwrap();
+        let policy = policy_config(
+            &format!("\"{}\"", user.path().display()),
+            &format!("\"{}\"", system.path().display()),
+        )
+        .unwrap();
+        for (host, user, port, identity) in [
+            ("destination", "endpoint", 2222, "/tmp/endpoint-key"),
+            ("jump", "jumper", 2200, "/tmp/jump-key"),
+        ] {
+            let output = Command::new("/usr/bin/ssh")
+                .args(["-vvG", "-F"])
+                .arg(policy.path())
+                .arg(host)
+                .output()
+                .await
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            let config = String::from_utf8_lossy(&output.stdout);
+            for expected in [
+                "batchmode yes".to_owned(),
+                "stricthostkeychecking true".into(),
+                "forwardagent no".into(),
+                "forwardx11 no".into(),
+                "forwardx11trusted no".into(),
+                "serveraliveinterval 7".into(),
+                format!("user {user}"),
+                format!("port {port}"),
+                format!("identityfile {identity}"),
+            ] {
+                assert!(
+                    config.lines().any(|line| line == expected),
+                    "missing {expected}: {config}"
+                );
+            }
+            if host == "destination" {
+                let debug = String::from_utf8_lossy(&output.stderr);
+                let proxy = debug
+                    .lines()
+                    .find(|line| line.contains("implicit ProxyCommand"))
+                    .unwrap();
+                assert!(
+                    proxy.contains(&format!("-F {}", policy.path().display())),
+                    "{proxy}"
+                );
+                assert!(proxy.ends_with(" jump"), "{proxy}");
+            }
+        }
+    }
 }
 
 #[cfg(test)]
 mod process_tests {
     use super::*;
+
+    #[tokio::test]
+    async fn inherited_stderr_deadline_aborts_and_joins_the_reader() {
+        struct Witness(Arc<std::sync::atomic::AtomicBool>);
+        impl Drop for Witness {
+            fn drop(&mut self) {
+                self.0.store(true, std::sync::atomic::Ordering::Release);
+            }
+        }
+        let joined = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let witness = Witness(joined.clone());
+        let drain = tokio::spawn(async move {
+            let _witness = witness;
+            std::future::pending::<Vec<u8>>().await
+        });
+        assert!(finish_diagnostics(drain).await.is_empty());
+        assert!(joined.load(std::sync::atomic::Ordering::Acquire));
+    }
+
+    #[tokio::test]
+    async fn cancellation_removes_observed_child_and_proxy_pids() {
+        use rustix::process::test_kill_process;
+        for descendant in [false, true] {
+            let directory = tempfile::tempdir().unwrap();
+            let marker = directory.path().join("pids");
+            let script = if descendant {
+                "import os,signal,subprocess,sys,time\np=subprocess.Popen(['/bin/sleep','60'],stdout=subprocess.DEVNULL)\ndef stop(*args):\n p.kill();p.wait();sys.exit(0)\nsignal.signal(signal.SIGTERM,stop)\nopen(sys.argv[1],'w').write(str(os.getpid())+' '+str(p.pid))\ntime.sleep(60)"
+            } else {
+                "import os,signal,sys,time\nsignal.signal(signal.SIGTERM,signal.SIG_IGN)\nopen(sys.argv[1],'w').write(str(os.getpid()))\ntime.sleep(60)"
+            };
+            let mut command = Command::new("/usr/bin/python3");
+            command
+                .args(["-c", script])
+                .arg(&marker)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .kill_on_drop(true);
+            let (control, driver) = Control::new(core::FrameBudget::default());
+            let (tx, _rx) = mpsc::channel(32);
+            let config = core::SessionConfig {
+                support: gliff_client_core::video::DecoderSupport::h264(&[
+                    gliff_proto::ChromaMode::Single420,
+                ]),
+                keymap: String::new(),
+                budget: core::FrameBudget::default(),
+                drain_on_close: false,
+            };
+            let run = tokio::spawn(run_command(command, config, driver, tx, control.clone()));
+            let pids = tokio::time::timeout(std::time::Duration::from_secs(5), async {
+                loop {
+                    if let Ok(text) = std::fs::read_to_string(&marker) {
+                        if !text.is_empty() {
+                            break text
+                                .split_whitespace()
+                                .map(|pid| Pid::from_raw(pid.parse().unwrap()).unwrap())
+                                .collect::<Vec<_>>();
+                        }
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+                }
+            })
+            .await
+            .unwrap();
+            assert_eq!(pids.len(), if descendant { 2 } else { 1 });
+            for pid in &pids {
+                assert!(test_kill_process(*pid).is_ok());
+            }
+            control.cancel();
+            assert_eq!(
+                tokio::time::timeout(std::time::Duration::from_secs(3), run)
+                    .await
+                    .unwrap()
+                    .unwrap(),
+                SessionEnd::Cancelled
+            );
+            for pid in pids {
+                assert_eq!(
+                    test_kill_process(pid),
+                    Err(rustix::io::Errno::SRCH),
+                    "PID {pid} survived completion"
+                );
+            }
+        }
+    }
 
     #[tokio::test]
     async fn logged_protocol_rejection_stays_fatal_and_normal_logged_eof_is_closed() {

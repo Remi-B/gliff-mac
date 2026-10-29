@@ -99,3 +99,30 @@ compatibility record failed. The record was refreshed against clean source
 `315b474` with the new SSH gate; qualification awaits current-source CI/live
 evidence. The implementation and regression tests total 46 passing Rust tests;
 Swift tests, both Apple targets, universal bridge and Xcode app passed.
+
+## Independent review corrections
+
+All four findings from the independent Sol review were confirmed and addressed:
+
+1. OpenSSH does not propagate destination command-line security options to
+   ProxyJump children. A session-owned private `-F` config now sets mandatory
+   batch authentication, strict host verification, no forwarding/multiplexing or
+   background execution before including normal user/system configuration.
+   OpenSSH propagates this `-F` file through generated jump commands. Effective
+   destination/jump config tests preserve each alias's user, port and identity
+   while overriding deliberately permissive security settings.
+2. Each SSH invocation owns a process group. Teardown sends TERM, waits at most
+   200 ms, escalates to KILL, reaps the immediate child, terminates surviving
+   proxy descendants and joins the stderr task before `onEnded`. A drop guard
+   also terminates the group if the driver task unwinds.
+3. Agent and X11 forwarding are explicitly disabled; ClearAllForwardings alone
+   covers only port forwarding. Local key/agent authentication still works.
+4. New PID-observable helpers test a TERM-resistant child and a proxy descendant
+   that inherits stderr. Their PIDs must be absent when the session returns. A
+   separate timeout test proves a stuck stderr reader is aborted and joined.
+
+Arbitrary user-authored ProxyCommand programs remain trusted configuration: the
+policy applies to OpenSSH-generated ProxyJump hops, and cleanup owns descendants
+that remain in the SSH process group. A helper that deliberately creates its own
+session/daemon is outside that lifecycle contract. The application exposes no
+raw ProxyCommand input.
