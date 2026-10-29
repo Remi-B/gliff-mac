@@ -193,9 +193,9 @@
     },
     "current-pin": {
       "role": "current-pin",
-      "result": "unqualified",
-      "reason": "required gate(s) unavailable: upstream-linux",
-      "date": "2026-10-29T22:02:22Z",
+      "result": "qualified",
+      "reason": "every required gate passed; human review decides the merge",
+      "date": "2026-10-29T22:15:42Z",
       "upstream": {
         "sha": "58c742452ded3f10a2ce61f60eb4845f18205e29",
         "describe": "v0.4.1",
@@ -203,7 +203,8 @@
       },
       "client": {
         "source_shas": [
-          "52a438131985b41cc86a9e121493a968775598fe"
+          "52a438131985b41cc86a9e121493a968775598fe",
+          "b8f699a6a42d961685d1062349aa7ff5caf43415"
         ],
         "dirty": false,
         "lockfile_sha256": "6ce1bad1b88658a2a8179fd2e8ad765822fe27bd48605d7adbfaedc057911318"
@@ -220,6 +221,27 @@
           "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)",
           "xcode": "Xcode 27.1",
           "date": "2026-10-29T21:58:51Z"
+        },
+        {
+          "os": "Linux 7.0.0-1017-azure",
+          "arch": "x86_64",
+          "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+          "xcode": null,
+          "date": "2026-10-29T22:04:25Z"
+        },
+        {
+          "os": "macOS 15.7.9",
+          "arch": "arm64",
+          "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+          "xcode": "Xcode 16.4",
+          "date": "2026-10-29T22:04:18Z"
+        },
+        {
+          "os": "Linux 7.0.0-1017-azure",
+          "arch": "x86_64",
+          "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13) (Arch Linux rust 1:1.99.1-1)",
+          "xcode": null,
+          "date": "2026-10-29T22:04:40Z"
         }
       ],
       "servers": [
@@ -290,7 +312,7 @@
         "swift-package": "passed",
         "bridge-import": "passed",
         "macos-app": "passed",
-        "upstream-linux": "unavailable",
+        "upstream-linux": "passed",
         "live-host": "passed",
         "ssh-session": "passed",
         "video-decode": "unavailable",

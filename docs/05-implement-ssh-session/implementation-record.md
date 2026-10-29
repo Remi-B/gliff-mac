@@ -79,6 +79,10 @@ Sol reported four P2 findings, all verified and fixed by the parent:
 Integration also fixed logged clean EOF, stderr masking typed incompatibility,
 executable-permission classification, and startup timeout after HelloAck. CI,
 qualification and the full evidence/review report are published on the PR.
+The current-pin record is qualified from clean local/live source `52a4381` and
+the successful CI push run on `b8f699a`: all 18 required gates passed across
+local macOS 27/Xcode 27.1, CI macOS 15/Xcode 16.4, Ubuntu and Arch upstream.
+Only documentation and compatibility metadata changed after the tested code.
 
 ## Limits
 
