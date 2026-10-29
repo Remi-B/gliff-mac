@@ -4,12 +4,18 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: Parent commit or branch to check (an upstream candidate)
+        type: string
+        required: true
 
 permissions:
   contents: read
 
 concurrency:
-  group: app-${{ github.ref }}
+  group: app-${{ inputs.ref || github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
@@ -18,9 +24,27 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          ref: ${{ inputs.ref }}
           submodules: recursive
       - run: scripts/bootstrap.sh
+      - id: key
+        run: echo "key=$(python3 scripts/upstream.py cache-key x86_64-unknown-linux-gnu)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+            tools/fixture-gen/target
+          key: ${{ steps.key.outputs.key }}
       - run: scripts/check.sh
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gates-linux
+          path: build/gates/
+          if-no-files-found: ignore
 
   macos:
     runs-on: macos-15
@@ -29,6 +53,56 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          ref: ${{ inputs.ref }}
           submodules: recursive
       - run: scripts/bootstrap.sh
+      - id: key
+        run: echo "key=$(python3 scripts/upstream.py cache-key apple-universal)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+            tools/fixture-gen/target
+          key: ${{ steps.key.outputs.key }}
       - run: scripts/check.sh
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gates-macos
+          path: build/gates/
+          if-no-files-found: ignore
+
+  # Upstream's own workspace, lockfile and Arch environment (its CI setup),
+  # separate from the app graph: the Linux client/server must keep building
+  # at the pinned or candidate SHA.
+  upstream-linux:
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      - run: |
+          pacman -Syu --noconfirm --needed git python rust pkgconf \
+            wayland libxkbcommon libdrm mesa gtk4 libadwaita dbus
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.ref }}
+          submodules: recursive
+      - run: git config --global --add safe.directory '*'
+      - id: key
+        run: echo "key=$(python3 scripts/upstream.py cache-key upstream-linux)-$(sha256sum vendor/gliff/Cargo.lock | cut -c1-16)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            vendor/gliff/target
+          key: ${{ steps.key.outputs.key }}
+      - run: python3 scripts/gates.py --only structure,upstream-linux --upstream-linux --summary build/gates/upstream-linux.json
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gates-upstream-linux
+          path: build/gates/
+          if-no-files-found: ignore

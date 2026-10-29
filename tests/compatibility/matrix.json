@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "policy": {
+    "merge": "human review; automatic merge is a later decision",
+    "qualification": "every required gate passed on its platform, including live-host evidence against the unmodified server; an unavailable required gate leaves the record unqualified",
+    "roles": {
+      "initial-release": "oldest upstream server release the app supports",
+      "current-pin": "the pinned upstream source and the evidence for it",
+      "candidate": "a staged or proposed pin, null when none is active"
+    }
+  },
+  "records": {
+    "initial-release": null,
+    "current-pin": null,
+    "candidate": null
+  }
+}
