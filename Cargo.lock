@@ -300,6 +300,9 @@ name = "gliff-mac-core"
 version = "0.1.0"
 dependencies = [
  "gliff-client-core",
+ "gliff-proto",
+ "thiserror",
+ "tokio",
  "uniffi",
 ]
 

@@ -1,5 +1,6 @@
 # Native tests
 
-Task 06 adds the session/view-model test target and shared scheme test action.
-Task 04 first verifies real generated bridge imports and callbacks. This directory
-reserves native test ownership; the initial app is only a buildable launch shell.
+Task 06 adds the session/view-model test target and shared scheme test action. The
+bridge's import, callback, buffer and teardown tests live in the `GliffCore` package
+(`macos/Packages/GliffCore/Tests`, run by `swift test`). This directory reserves the
+app's own native test ownership.

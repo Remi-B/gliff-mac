@@ -4,6 +4,10 @@ source "$(dirname "$0")/lib.sh"
 cd "$GLIFF_ROOT"
 require_macos
 
+# The GliffCore package references the generated XCFramework: produce it
+# before Xcode resolves the package.
+scripts/build-bridge.sh
+
 xcodebuild \
   -project macos/GliffMac.xcodeproj \
   -scheme GliffMac \

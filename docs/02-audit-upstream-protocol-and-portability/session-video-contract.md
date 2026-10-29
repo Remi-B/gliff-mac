@@ -113,8 +113,11 @@ does not auto-reconnect.
     `Error` 1–255 and contract errors are not retried; `ERROR_SETUP` and transport errors
     may be retried by task 10's reconnection policy.
 
-Rules 0–6 and 10 are executable today. Rules 7–9 are the specification tasks 05 and 07
-implement; their budgets are initial values to be measured in task 12.
+Rules 0–6 and 10 are executable today. Task 04's session driver and bridge implement the
+Rust side of rules 7 and 8 (decode reports from Swift, ordered acks, in-flight count and
+byte budget with back-pressure); see the [bridge contract](../04-build-rust-swift-bridge/bridge-contract.md).
+Tasks 05 and 07 apply them to a live SSH session and VideoToolbox; the budgets are initial
+values to be measured in task 12.
 
 ## Pacing measured on fixtures
 

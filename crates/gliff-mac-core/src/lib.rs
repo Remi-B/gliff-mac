@@ -1,4 +1,14 @@
 //! App-owned UniFFI facade. Native video, input and UI remain in Swift/AppKit.
+//!
+//! Swift sees only the records, enums and objects declared here, never the
+//! upstream wire types. See `docs/04-build-rust-swift-bridge/bridge-contract.md`
+//! for thread ownership, delivery order, budgets and teardown.
+
+mod session;
+mod types;
+
+pub use session::{GliffSession, SessionDelegate};
+pub use types::*;
 
 uniffi::setup_scaffolding!();
 
