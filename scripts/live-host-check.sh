@@ -156,6 +156,9 @@ if session is not None:
         status, reason = "failed", "only %d of %s frames decoded" % (len(decoded), frames)
     elif len(session["configs"]) < 2:
         status, reason = "failed", "the client Resize did not produce a second configuration"
+    elif any(c.get("pipeline") != video for c in session["configs"]):
+        status, reason = "failed", "requested --video %s, but the server negotiated %s" % (
+            video, sorted({str(c.get("pipeline")) for c in session["configs"]}))
 evidence = {
     "gate": "live-host",
     "status": status,

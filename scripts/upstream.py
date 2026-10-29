@@ -341,6 +341,14 @@ def merge_gates(gate_files, live_files):
                                                 "title": "Live session", "platforms": {}})
         if entry.get("status") != "failed":
             entry["status"], entry["reason"] = status, reason
+    # Every gate gates.py declares required counts, whether or not a summary
+    # mentions it: a missing or empty summary leaves it unavailable.
+    for gate_id in sorted(required_gates() - set(merged)):
+        merged[gate_id] = {"id": gate_id, "title": gate_id, "required": True,
+                           "status": "unavailable", "platforms": {},
+                           "reason": "no supplied summary ran this gate"}
+    for entry in merged.values():
+        entry["required"] = entry["id"] in required_gates()
     required = [g for g in merged.values() if g["required"]]
     failed = [g["id"] for g in required if g["status"] == "failed"]
     missing = [g["id"] for g in required if g["status"] == "unavailable"]
@@ -379,6 +387,24 @@ def cmd_qualify(args):
     return 1 if result == "failed" else 0
 
 
+# Paths a record commit may change after its evidence ran: the records and docs.
+EVIDENCE_NEUTRAL = (":(exclude)tests/compatibility/matrix.json", ":(exclude)docs")
+
+
+def require_current_evidence(name, sha, dirty):
+    """Evidence must come from a clean commit whose sources equal HEAD's, so the
+    hashes recorded from the checkout describe the code that was tested."""
+    if dirty:
+        raise SystemExit("{}: produced from a dirty tree; commit and re-run it".format(name))
+    if subprocess.run(["git", "merge-base", "--is-ancestor", sha, "HEAD"], cwd=ROOT,
+                      capture_output=True).returncode != 0:
+        raise SystemExit("{}: client commit {} is not in this branch's history".format(name, sha))
+    changed = run("git", "diff", "--name-only", sha, "HEAD", "--", ".", *EVIDENCE_NEUTRAL)
+    if changed:
+        raise SystemExit("{}: sources changed since {} ({}); re-run it on HEAD".format(
+            name, sha[:12], ", ".join(changed.splitlines()[:5])))
+
+
 def cmd_record(args):
     summaries, merged, result, reason = merge_gates(args.gates, args.live_evidence)
     current = pin()
@@ -388,6 +414,11 @@ def cmd_record(args):
                 summary["context"]["upstream_sha"], current))
     lives = [json.loads(Path(p).read_text()) for p in args.live_evidence]
     clients = {s["context"]["client_source_sha"] for s in summaries}
+    for name, sha, dirty in ([(p, s["context"]["client_source_sha"], s["context"]["client_dirty"])
+                              for p, s in zip(args.gates, summaries)] +
+                             [(p, e["client"]["source_sha"], e["client"]["dirty"])
+                              for p, e in zip(args.live_evidence, lives)]):
+        require_current_evidence(name, sha, dirty)
     record = {
         "role": args.role,
         "result": result,
@@ -455,10 +486,10 @@ def cmd_check(_args):
             continue
         if entry.get("result") not in ("qualified", "unqualified", "failed"):
             problems.append("{}: result must be qualified, unqualified or failed".format(role))
+        gates = entry.get("gates", {})
         if entry.get("result") == "qualified" and any(
-                status != "passed" for gate, status in entry.get("gates", {}).items()
-                if gate in required_gates()):
-            problems.append("{}: qualified with a required gate not passed".format(role))
+                gates.get(gate) != "passed" for gate in required_gates()):
+            problems.append("{}: qualified without every required gate passed".format(role))
     if problems:
         raise SystemExit("Compatibility records are out of date with the checkout:\n  - " +
                          "\n  - ".join(problems) +
