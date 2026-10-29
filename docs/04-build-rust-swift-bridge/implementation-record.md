@@ -67,6 +67,14 @@ confirmed and fixed with a regression test each:
 5. Cursor coalescing could move a position across a cursor shape: a waiting position is
    now delivered before any other event.
 
+## Qualified record
+
+The current-pin record (v0.4.1) is **qualified** again from commit `1dc0159`: this Mac
+(macOS 27.0.1, Xcode 27.1), the CI `push` run on macOS 15.7 / Xcode 16.4 and Ubuntu, the
+upstream workspace in Arch, and live CPU Single420 and GPU Dual420 runs on `omarchy-mbp`.
+It lists the gates required now, including the three bridge gates. The initial-release
+record is unchanged and is judged against task 03's gates.
+
 ## Acceptance
 
 | Criterion | Evidence |
