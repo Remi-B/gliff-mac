@@ -1,8 +1,13 @@
 //! System OpenSSH adapter. No local shell, raw flags, or raw remote commands.
 use crate::{session::Item, types::*};
-use gliff_client_core::session::{self as core, Control, Driver};
+use gliff_client_core::{
+    events::SessionError,
+    session::{self as core, Control, Driver},
+};
 use rustix::process::{kill_process_group, test_kill_process_group, Pid, Signal};
-use std::{io::Write, os::unix::process::CommandExt, path::Path, process::Stdio, sync::Arc};
+use std::{
+    error::Error, io::Write, os::unix::process::CommandExt, path::Path, process::Stdio, sync::Arc,
+};
 use tokio::{io::AsyncReadExt, process::Command, sync::mpsc};
 
 fn quote(word: &str) -> String {
@@ -31,6 +36,8 @@ fn policy_config(user: &str, system: &str) -> std::io::Result<tempfile::NamedTem
         "StdinNull no",
         "SessionType default",
         "RequestTTY no",
+        "RemoteCommand none",
+        "Tunnel no",
     ] {
         writeln!(file, "    {option}")?;
     }
@@ -47,12 +54,17 @@ struct ProcessGroup {
 
 impl ProcessGroup {
     async fn terminate(&self) {
+        if test_kill_process_group(self.pid) == Err(rustix::io::Errno::SRCH) {
+            return;
+        }
         let _ = kill_process_group(self.pid, Signal::TERM);
         let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(200);
         while test_kill_process_group(self.pid).is_ok() && tokio::time::Instant::now() < deadline {
             tokio::time::sleep(std::time::Duration::from_millis(10)).await;
         }
-        let _ = kill_process_group(self.pid, Signal::KILL);
+        if test_kill_process_group(self.pid).is_ok() {
+            let _ = kill_process_group(self.pid, Signal::KILL);
+        }
     }
 }
 
@@ -223,32 +235,63 @@ async fn run_command(
     group.armed = false;
     // A remote descendant can inherit stderr. Abort and join rather than wait forever.
     let diagnostics = finish_diagnostics(drain).await;
+    classify_end(
+        result,
+        control.connected(),
+        status.is_ok_and(|status| status.success()),
+        &diagnostics,
+    )
+}
+
+fn classify_end(
+    result: Result<core::SessionEnd, SessionError>,
+    connected: bool,
+    successful_exit: bool,
+    diagnostics: &[u8],
+) -> SessionEnd {
     match result {
         Ok(core::SessionEnd::Cancelled) => SessionEnd::Cancelled,
-        Ok(core::SessionEnd::Closed)
-            if !control.connected() || !status.is_ok_and(|status| status.success()) =>
-        {
-            SessionEnd::Failed {
-                error: GliffError::Transport {
-                    message: diagnostic(&diagnostics),
-                },
-            }
-        }
+        Ok(core::SessionEnd::Closed) if !connected => SessionEnd::Failed {
+            error: GliffError::Transport {
+                message: diagnostic(diagnostics),
+            },
+        },
+        Ok(core::SessionEnd::Closed) if !successful_exit => SessionEnd::Failed {
+            error: GliffError::Transport {
+                message:
+                    "SSH session ended unexpectedly. Check the network and server diagnostics."
+                        .into(),
+            },
+        },
         Ok(core::SessionEnd::Closed) => SessionEnd::Closed,
+        Err(error @ SessionError::Transport(_)) if is_timeout(&error) => SessionEnd::Failed {
+            error: error.into(),
+        },
         // SSH stderr adds context to transport failures only. A server can
         // log before rejecting our protocol; retain its typed fatal error.
-        Err(gliff_client_core::events::SessionError::Transport(_))
-            if !control.connected() && !diagnostics.is_empty() =>
-        {
+        Err(SessionError::Transport(_)) if !connected && !diagnostics.is_empty() => {
             SessionEnd::Failed {
                 error: GliffError::Transport {
-                    message: diagnostic(&diagnostics),
+                    message: diagnostic(diagnostics),
                 },
             }
         }
         Err(error) => SessionEnd::Failed {
             error: error.into(),
         },
+    }
+}
+
+fn is_timeout(error: &SessionError) -> bool {
+    let mut source: &dyn Error = error;
+    loop {
+        if let Some(io) = source.downcast_ref::<std::io::Error>() {
+            return io.kind() == std::io::ErrorKind::TimedOut;
+        }
+        let Some(next) = source.source() else {
+            return false;
+        };
+        source = next;
     }
 }
 
@@ -266,6 +309,27 @@ async fn finish_diagnostics(mut drain: tokio::task::JoinHandle<Vec<u8>>) -> Vec<
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn warnings_preserve_startup_timeout_and_live_exit_does_not_claim_startup_failed() {
+        let error = SessionError::Transport(
+            std::io::Error::new(std::io::ErrorKind::TimedOut, "startup exceeded 20 seconds").into(),
+        );
+        let end = classify_end(Err(error), false, false, b"Warning: key exchange warning");
+        assert!(
+            matches!(end, SessionEnd::Failed { error: GliffError::Transport { ref message } } if message.contains("startup exceeded 20 seconds")),
+            "{end:?}"
+        );
+        let end = classify_end(
+            Ok(core::SessionEnd::Closed),
+            true,
+            false,
+            b"server resource not found: permission denied",
+        );
+        assert!(
+            matches!(end, SessionEnd::Failed { error: GliffError::Transport { ref message } } if message.contains("session ended unexpectedly") && !message.contains("could not start")),
+            "{end:?}"
+        );
+    }
     #[test]
     fn quotes_remote_shell_metacharacters() {
         assert_eq!(
@@ -315,7 +379,7 @@ mod tests {
     #[tokio::test]
     async fn jump_hops_share_the_policy_and_keep_host_specific_config() {
         let mut user = tempfile::NamedTempFile::new().unwrap();
-        writeln!(user, "Host destination\n HostName 127.0.0.1\n User endpoint\n Port 2222\n IdentityFile /tmp/endpoint-key\n ProxyJump jump\nHost jump\n HostName 127.0.0.1\n User jumper\n Port 2200\n IdentityFile /tmp/jump-key\nHost *\n BatchMode no\n StrictHostKeyChecking no\n ForwardAgent yes\n ForwardX11 yes\n ForwardX11Trusted yes\nHost unmatched").unwrap();
+        writeln!(user, "Host destination\n HostName 127.0.0.1\n User endpoint\n Port 2222\n IdentityFile /tmp/endpoint-key\n ProxyJump jump\nHost jump\n HostName 127.0.0.1\n User jumper\n Port 2200\n IdentityFile /tmp/jump-key\nHost *\n BatchMode no\n StrictHostKeyChecking no\n ForwardAgent yes\n ForwardX11 yes\n ForwardX11Trusted yes\n RemoteCommand tmux attach\n Tunnel yes\nHost unmatched").unwrap();
         let mut system = tempfile::NamedTempFile::new().unwrap();
         writeln!(system, "Host *\n ServerAliveInterval 7").unwrap();
         let policy = policy_config(
@@ -346,6 +410,7 @@ mod tests {
                 "forwardagent no".into(),
                 "forwardx11 no".into(),
                 "forwardx11trusted no".into(),
+                "tunnel false".into(),
                 "serveraliveinterval 7".into(),
                 format!("user {user}"),
                 format!("port {port}"),
@@ -356,6 +421,7 @@ mod tests {
                     "missing {expected}: {config}"
                 );
             }
+            assert!(!config.contains("tmux attach"), "{config}");
             if host == "destination" {
                 let debug = String::from_utf8_lossy(&output.stderr);
                 let proxy = debug

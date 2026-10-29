@@ -328,7 +328,9 @@ impl ConnectionTarget {
                         .bytes()
                         .all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b))
                     {
-                        return Err(invalid("user cannot contain '@'"));
+                        return Err(invalid(
+                            "user must contain only ASCII letters, digits, '.', '_' or '-'",
+                        ));
                     }
                 }
                 if *port == Some(0) {
@@ -336,6 +338,9 @@ impl ConnectionTarget {
                 }
                 if let Some(path) = server_path {
                     check_word("server path", path)?;
+                    if path.starts_with('~') {
+                        return Err(invalid("server path cannot use '~'; use an absolute path or an executable name on the remote PATH"));
+                    }
                 }
                 Ok(())
             }

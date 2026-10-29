@@ -43,7 +43,7 @@ flowchart LR
 | Item | Role |
 | --- | --- |
 | `GliffSession(target:options:)` | Validates and builds; nothing runs. Typed `GliffError.InvalidOptions` |
-| `ConnectionTarget.ssh(host:user:port:serverPath:identityFile:headless:)` | Validated now (no leading `-`, spaces, control characters, `@` in user, port 0); starts system OpenSSH with strict verification and batch authentication |
+| `ConnectionTarget.ssh(host:user:port:serverPath:identityFile:headless:)` | Restricted host/user syntax, nonzero port, literal remote executable (no leading `~`) and optional absolute identity path; starts system OpenSSH with strict verification and batch authentication |
 | `ConnectionTarget.replay(stream:)` | A recorded `.gliffstream`, for tests and diagnostics; client messages are counted, not sent |
 | `SessionOptions` | Decoder chroma modes for replay (live SSH is restricted to H.264/Single420 until task 08), keymap, in-flight budget (default 4 frames, 8 MiB) |
 | `start(delegate:)` | Once; `AlreadyStarted` afterwards. A refused start keeps no delegate |
@@ -120,9 +120,17 @@ captures nothing but its two closures, so interface models are captured weakly t
 
 ## Not covered yet
 
-- Live and Finder-environment acceptance remain pending for task 05.
+- Live and Finder-environment transport acceptance passed in task 05; real native decode is task 07 and real multi-hop routes are tracked in task 12.
 - Zero-copy frames (`Data` without a copy) and a measured budget: tasks 07 and 12.
 - x86_64 runtime: both slices are built and linked here; running them needs Intel
   hardware (this Mac has no Rosetta), a hardware gate of task 12.
 
-`state()` exposes connecting (constructed), handshaking (started), streaming (HelloAck accepted), stopping, closed and failed. Poll this query for UI state; callback ordering is unchanged. SSH always advertises H264/Single420; replay keeps configured chroma. Startup is bounded to 20 seconds including blocked Hello writes; OpenSSH connection attempts use 10 seconds. A native frame awaiting completion for 15 seconds ends with a transport timeout, including while a write or delivery is blocked. Teardown kills/reaps SSH and drains or aborts/joins the bounded stderr worker before onEnded. Diagnostics use fixed setup guidance rather than returning raw stderr.
+`state()` exposes connecting (constructed), handshaking (started), streaming (first StreamConfig accepted), stopping, closed and failed. Poll this query for UI state; callback ordering is unchanged. SSH always advertises H264/Single420; replay keeps configured chroma. Startup is bounded to 20 seconds including blocked Hello writes; OpenSSH connection attempts use 10 seconds. A native frame awaiting completion for 15 seconds ends with a transport timeout, including while a write or delivery is blocked. Teardown kills/reaps SSH and drains or aborts/joins the bounded stderr worker before onEnded. Diagnostics use fixed setup guidance rather than returning raw stderr.
+
+User names accept only ASCII letters, digits, `.`, `_` and `-`, with no leading
+`-`. Server executables are quoted literally: use an absolute path, a relative
+path, or an executable name on the remote PATH; `~/...` is rejected with guidance.
+User RemoteCommand and tunnel settings are disabled so the session can own its
+server command and transport. Timeout diagnostics retain their original phase
+even when SSH emits warnings; an established session's unexpected exit is
+reported as a session failure rather than a startup failure.

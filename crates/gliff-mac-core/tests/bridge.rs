@@ -120,6 +120,7 @@ fn invalid_targets_and_options_are_typed_errors() {
         ssh("a b", None, None),
         ssh("host", Some("-l"), None),
         ssh("host", Some("me@x"), None),
+        ssh("host", Some("user$"), None),
         ssh("host", None, Some(0)),
         ConnectionTarget::Replay { stream: vec![] },
     ] {
@@ -149,6 +150,22 @@ fn invalid_targets_and_options_are_typed_errors() {
     let session = GliffSession::new(ssh("host", Some("me"), Some(22)), single).unwrap();
     session.cancel();
     session.start(Arc::new(Recorder::default())).unwrap();
+}
+
+#[test]
+fn remote_home_paths_are_rejected_with_setup_guidance() {
+    let target = ConnectionTarget::Ssh {
+        host: "host".into(),
+        user: None,
+        port: None,
+        server_path: Some("~/bin/gliff-server".into()),
+        identity_file: None,
+        headless: true,
+    };
+    assert!(matches!(
+        GliffSession::new(target, options(vec![ChromaMode::Single420])),
+        Err(GliffError::InvalidOptions { message }) if message.contains("absolute path")
+    ));
 }
 
 #[test]

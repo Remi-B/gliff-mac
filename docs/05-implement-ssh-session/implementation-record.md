@@ -92,3 +92,16 @@ coverage; real known_hosts was not modified for fault injection. No password or
 private-key store is added. Custom user-authored ProxyCommand programs remain
 trusted configuration; a helper that deliberately creates its own session/daemon
 escapes the process-group lifecycle contract. The app exposes no such raw input.
+
+## Additional Opus review
+
+Opus independently confirmed the four Sol fixes and found one further P2:
+user-configured RemoteCommand conflicts with Gliff's server command. The private
+policy now forces RemoteCommand none and Tunnel no for destination and jump
+aliases; the effective-config regression includes conflicting user settings.
+The small P3 findings were also addressed: avoid signalling an already absent
+process group, preserve startup timeout reasons despite stderr warnings, use
+neutral diagnostics after an established session exits, align the bridge
+contract with actual states/validation, and reject literal remote `~/...` paths
+with setup guidance. Timeout, live-exit and path-validation regressions cover
+the behavior changes; the existing process/PID tests cover teardown.
