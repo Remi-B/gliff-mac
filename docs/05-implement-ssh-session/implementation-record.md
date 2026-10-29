@@ -1,128 +1,90 @@
 # Task 05 implementation record
 
-Updated: 2026-10-29. Branch `feat/ssh-session`. Status: in review;
-live SSH and Finder transport acceptance passed.
+Updated: 2026-10-29. Branch `feat/ssh-session`. Status: in review.
+Dependencies 03 and 04 are merged. Upstream remains the unmodified pinned
+`58c742452ded3f10a2ce61f60eb4845f18205e29` (`gliff-server 0.4.1`).
 
-## Implementation
+## Delivered behavior
 
-The UniFFI session now starts absolute `/usr/bin/ssh` with piped stdio and
-noninteractive key/agent authentication, strict ordinary known-host verification,
-10-second connection timeout and one attempt. Config aliases, user, port,
-identities and ProxyJump remain OpenSSH's responsibility. Explicit optional
-absolute identity paths support GUI agents that lack the intended key. No SSH
-config or vendor changes are made. Forwarding, local commands and multiplexed
-control sockets are disabled for this transport.
+The public Rust/Swift session API now runs absolute `/usr/bin/ssh` with piped
+stdio, batch key/agent authentication and strict ordinary known-host verification.
+Host/user/port, optional absolute identity file, quoted remote executable and
+headless mode are structured fields; there is no raw command or flags API.
+Normal config aliases, identities and ProxyJump settings are included without
+editing user SSH files. Protocol framing and serialization remain upstream-owned.
 
-Host/user fields use restricted syntax and reject option prefixes; server paths
-reject control/whitespace and option prefixes. The executable is POSIX shell
-quoted (including embedded apostrophes), with structured `--stdio` and optional
-`--headless`; there is no raw command/flags API. Local arguments never pass
-through a shell. Existing SSH config is trusted user configuration.
+A private session-scoped `-F` config applies mandatory batch authentication,
+strict verification, 10-second connection attempts, no agent/X11/port forwarding,
+no multiplexing/local commands and foreground stdio before including ordinary
+user/system configuration. OpenSSH propagates this file to generated ProxyJump
+commands. It is removed after the process group and stderr worker stop.
 
-The adapter owns the child, closes driver pipes, kills/reaps it, and joins its
-stderr worker before returning an end item. Stderr is drained continuously with
-16 KiB retained; only fixed redacted host-key/authentication/setup guidance crosses
-the bridge. An inherited stderr descriptor has a one-second drain deadline,
-after which the task is aborted and joined. Callback delivery/order and the
-portable protocol driver remain shared with replay.
+The adapter owns a dedicated process group, sends TERM then KILL after at most
+200 ms, reaps SSH and terminates surviving proxy descendants before `onEnded`.
+A drop guard covers task unwinding. Stderr is continuously drained with 16 KiB
+retained; only fixed actionable/redacted guidance reaches the bridge. An
+inherited stderr descriptor has a one-second abort-and-join deadline. Normal
+logged EOF uses the child's exit status; diagnostics never mask typed fatal
+protocol/version failures.
 
-`state()` exposes connecting (constructed), handshaking (started), streaming
-(first StreamConfig accepted), stopping, closed and failed without changing delegate APIs.
-Live support is H264/Single420 regardless of replay decoder preferences; Dual420
-fixtures remain supported. Startup has a 20-second bound through the first StreamConfig, including blocked
-Hello writes and a server that acknowledges Hello without configuring video. A frame pending native completion for 15 seconds fails the session with
-a transport timeout (watchdog resolution 100 ms), also interrupting blocked writes
-or delivery. This chooses termination rather than unbounded decode back-pressure;
-normal decode failure still uses ordered ack/keyframe recovery.
+`state()` exposes connecting, handshaking, streaming, stopping, closed and failed.
+Startup stays bounded at 20 seconds through the first StreamConfig, including
+blocked Hello writes and HelloAck followed by silent video setup. A frame
+unreported by the native decoder for 15 seconds fails the session (100 ms
+watchdog resolution). Normal failed/discarded reports retain ordered ack and
+keyframe recovery. The existing ordered callbacks, byte/count budgets and
+back-pressure driver are shared with replay. Live SSH advertises only
+H.264/Single420; dual-stream replay remains for fixtures until task 08.
 
-## Verification performed in the prepared checkout
+## Acceptance evidence
 
-- Bootstrap completed; upstream pin and submodule sources unchanged.
-- `cargo test --workspace --locked`: 44 tests passed, including existing adversarial
-  protocol/replay/driver coverage and new process, quoting, redaction, silent/blocked
-  startup and decode-stall tests. Process tests flood stderr and repeat lifecycle
-  cleanup eight times; cancellation exercises a sleeping child during startup.
-- `cargo clippy --workspace --all-targets --locked -- -D warnings`: passed.
-- `cargo fmt --all --check`: passed.
-- `scripts/build-bridge.sh`: passed; arm64/x86_64 archives, matching generated
-  bindings and universal XCFramework regenerated via existing build integration.
-- `swift test --package-path macos/Packages/GliffCore`: nine tests passed,
-  including SSH pre-start cancellation and state through generated bindings.
-- `swift build --package-path macos/Packages/GliffCore --arch x86_64 --build-tests`:
-  passed (build only; no Intel runtime claim).
-- `python3 scripts/gates.py --only structure,whitespace,ssh-session`: three passed.
-  The new SSH gate explicitly covers process/mock behavior, not live acceptance.
+Final clean source `52a4381` on macOS 27.0.1 arm64 / Xcode 27.1 / Rust 1.90.0:
 
-## Validation limits
+| Check | Evidence |
+| --- | --- |
+| Full entrypoint | `scripts/check.sh --live-evidence build/live/58c742452ded-cpu-single420/evidence.json`: 17 passed, 0 failed, 7 unavailable (upstream Linux CI and six later tasks) |
+| Rust | 49 app tests plus 3 fixture-tool tests; Clippy with warnings denied; rustfmt |
+| Native builds | Both Apple Rust targets, dependency/portability audit, matching generated bindings, universal XCFramework and Xcode app |
+| Swift | Nine Swift tests passed on arm64; x86_64 package/tests compiled |
+| Protocol faults | Existing replay/mock tests cover malformed/unknown messages, incompatible versions, truncated EOF, payload association, cancellation, ordered feedback and recovery |
+| Startup/decode deadlines | Blocked Hello, silent peer, HelloAck without config, and stalled native completion regressions |
+| Process lifecycle | Stderr flood and repeated cleanup; observed PID tests for a TERM-resistant child and a proxy descendant retaining stderr; stderr worker abort/join test. Process regressions passed three consecutive runs |
+| Jump security | Real `ssh -G` evaluation for destination and jump aliases preserves user/port/identity while overriding permissive auth, verification and forwarding; generated ProxyCommand retains the policy file |
+| Public-facade live transport | Headless sessions delivered/acked 70 frames, then sequential cycles of 63 and 54, with one pong each and clean cancellation |
+| Finder environment | Actual Finder launch through a temporary native app: PATH `/usr/bin:/bin:/usr/sbin:/sbin`, GUI agent present, shell sentinel absent. After review fixes: 53 delivered frames, 53 acks, one pong, state closed |
+| Live reference decode | Unmodified pinned CPU server; four frames recorded/decoded with the reference decoder; client Resize changed 1920×1080 to 1280×800 |
 
-The probes synthetically report decode completion; actual VideoToolbox decoding
-remains task 07. Intel runtime and additional agent/ProxyJump configurations are
-not covered on this Apple Silicon machine. Host-key/auth classifications have
-deterministic unit coverage; destructive changes to real known_hosts were not
-used for fault injection. Independent review and current-source CI results are
-recorded on the pull request.
+The Finder metadata is [finder-transport.json](evidence/finder-transport.json);
+initial sequential-cycle metadata is [repeated-transport.json](evidence/repeated-transport.json).
+The facade probe reports synthetic native decode completion, so its counters
+prove transport pacing, not VideoToolbox decoding. It logs no video contents.
+The separate reference-decoder check uses headless default-background frames.
+No SSH/server child or private policy file remained after the completed probes.
+The first short 5/10-second probes ended before setup completed on this network;
+acceptance used 30-second probes while preserving the 20-second startup bound.
 
-## Integration corrections
+## Independent review
 
-- Preserve typed protocol/version failures even when server startup logs appear
-  on SSH stderr; transport diagnostics cannot hide fatal incompatibility.
-- Allow the child a bounded 200 ms normal exit after protocol EOF, check its exit
-  status, and accept routine stderr on a successful close.
-- Distinguish remote executable permission errors from SSH key rejection, and
-  give network timeout/resolution guidance without exposing raw diagnostics.
-- Keep the startup deadline active after HelloAck until StreamConfig; the public
-  state remains handshaking during server video setup. Regression tests exercise
-  both logged protocol rejection and a logged clean close, plus silent setup
-  after HelloAck.
+Sol reported four P2 findings, all verified and fixed by the parent:
 
-## Parent live acceptance
+1. Destination SSH options did not propagate to ProxyJump: private per-session
+   policy now applies to every generated hop; effective-config regressions pass.
+2. Killing only the SSH PID could leave proxies alive: process-group termination
+   and bounded escalation now precede completion; observed PID regressions pass.
+3. ClearAllForwardings left agent/X11 forwarding enabled: explicit prohibitions
+   apply to the destination and generated hops; argv/config regressions pass.
+4. Cleanup tests only checked return values: new PID and worker-drop witnesses
+   establish process disappearance and worker joining before completion.
 
-The public facade reached the unmodified pinned `gliff-server 0.4.1` on the
-Omarchy host in headless mode: a terminal probe delivered/acked 70 frames and
-answered one ping. A Finder-launched temporary native app invoked the same probe
-with the actual GUI environment: PATH `/usr/bin:/bin:/usr/sbin:/sbin`, SSH agent
-present, and an injected shell-only sentinel absent. It delivered/acked 67 frames,
-answered one ping, then cancelled with state closed. Metadata is in
-[evidence/finder-transport.json](evidence/finder-transport.json). No video contents
-were logged or recorded by these probes; decode completion was synthetic.
+Integration also fixed logged clean EOF, stderr masking typed incompatibility,
+executable-permission classification, and startup timeout after HelloAck. CI,
+qualification and the full evidence/review report are published on the PR.
 
-The first short 5/10-second probes stopped before startup completed on this
-network. Thirty-second probes are used for acceptance, while the implementation
-still bounds startup at 20 seconds. A direct server preflight with stdin closed
-correctly reported `read Hello: connection closed`.
+## Limits
 
-Two further sequential connect/stop cycles delivered and acknowledged 63 and 54
-frames respectively, with one pong each, and closed after cancellation. The
-metadata is in [evidence/repeated-transport.json](evidence/repeated-transport.json).
-The initial full check ran every local gate: 15 passed and only the stale
-compatibility record failed. The record was refreshed against clean source
-`315b474` with the new SSH gate; qualification awaits current-source CI/live
-evidence. The implementation and regression tests total 46 passing Rust tests;
-Swift tests, both Apple targets, universal bridge and Xcode app passed.
-
-## Independent review corrections
-
-All four findings from the independent Sol review were confirmed and addressed:
-
-1. OpenSSH does not propagate destination command-line security options to
-   ProxyJump children. A session-owned private `-F` config now sets mandatory
-   batch authentication, strict host verification, no forwarding/multiplexing or
-   background execution before including normal user/system configuration.
-   OpenSSH propagates this `-F` file through generated jump commands. Effective
-   destination/jump config tests preserve each alias's user, port and identity
-   while overriding deliberately permissive security settings.
-2. Each SSH invocation owns a process group. Teardown sends TERM, waits at most
-   200 ms, escalates to KILL, reaps the immediate child, terminates surviving
-   proxy descendants and joins the stderr task before `onEnded`. A drop guard
-   also terminates the group if the driver task unwinds.
-3. Agent and X11 forwarding are explicitly disabled; ClearAllForwardings alone
-   covers only port forwarding. Local key/agent authentication still works.
-4. New PID-observable helpers test a TERM-resistant child and a proxy descendant
-   that inherits stderr. Their PIDs must be absent when the session returns. A
-   separate timeout test proves a stuck stderr reader is aborted and joined.
-
-Arbitrary user-authored ProxyCommand programs remain trusted configuration: the
-policy applies to OpenSSH-generated ProxyJump hops, and cleanup owns descendants
-that remain in the SSH process group. A helper that deliberately creates its own
-session/daemon is outside that lifecycle contract. The application exposes no
-raw ProxyCommand input.
+Intel runtime, real multi-host ProxyJump/agent combinations, and native
+VideoToolbox completion remain unverified. Host-key/auth guidance has deterministic
+coverage; real known_hosts was not modified for fault injection. No password or
+private-key store is added. Custom user-authored ProxyCommand programs remain
+trusted configuration; a helper that deliberately creates its own session/daemon
+escapes the process-group lifecycle contract. The app exposes no such raw input.

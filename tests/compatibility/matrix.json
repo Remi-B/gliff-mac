@@ -194,8 +194,8 @@
     "current-pin": {
       "role": "current-pin",
       "result": "unqualified",
-      "reason": "required gate(s) unavailable: apple-rust-arm64, apple-rust-x86_64, bridge-build, bridge-import, contract-fixtures, live-host, macos-app, portability-audit, protocol-surface, rust-format, swift-package, upstream-linux, whitespace",
-      "date": "2026-10-29T21:57:30Z",
+      "reason": "required gate(s) unavailable: upstream-linux",
+      "date": "2026-10-29T22:02:22Z",
       "upstream": {
         "sha": "58c742452ded3f10a2ce61f60eb4845f18205e29",
         "describe": "v0.4.1",
@@ -203,7 +203,7 @@
       },
       "client": {
         "source_shas": [
-          "cd506c0bcbd0bce24061fd58248bd3c469a39d11"
+          "52a438131985b41cc86a9e121493a968775598fe"
         ],
         "dirty": false,
         "lockfile_sha256": "6ce1bad1b88658a2a8179fd2e8ad765822fe27bd48605d7adbfaedc057911318"
@@ -219,29 +219,86 @@
           "arch": "arm64",
           "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)",
           "xcode": "Xcode 27.1",
-          "date": "2026-10-29T21:57:07Z"
+          "date": "2026-10-29T21:58:51Z"
         }
       ],
-      "servers": [],
+      "servers": [
+        {
+          "host": "omarchy-mbp.local",
+          "source_sha": "58c742452ded3f10a2ce61f60eb4845f18205e29",
+          "lockfile_sha256": "0dfd5f89b00821d8e5235cf52b39746aa66b0d3160b8ca648a04c89adaf2584b",
+          "version": "gliff-server 0.4.1",
+          "kernel": "Linux 7.2.11-arch1-Watanare-T2-1-t2 x86_64",
+          "os": "Omarchy",
+          "hyprland": "0.56.2",
+          "arguments": [
+            "--stdio",
+            "--headless",
+            "--video",
+            "cpu"
+          ],
+          "date": "2026-10-29T21:58:39Z",
+          "status": "passed",
+          "session": {
+            "chroma": "single420",
+            "frames_requested": 4,
+            "client_resize": "1280x800",
+            "frames_recorded": 4,
+            "frames_decoded": 4,
+            "messages": [
+              "HelloAck",
+              "Ping",
+              "StreamConfig",
+              "CursorShape",
+              "..."
+            ],
+            "configs": [
+              {
+                "codec": "H264",
+                "chroma": "Single420",
+                "pipeline": "cpu",
+                "width": 1920,
+                "height": 1080,
+                "fps_cap": 30
+              },
+              {
+                "codec": "H264",
+                "chroma": "Single420",
+                "pipeline": "cpu",
+                "width": 1280,
+                "height": 800,
+                "fps_cap": 30
+              }
+            ],
+            "stream_sha256": "f489681cc3f771de29118649924251ee679a3a4f4b4504dd0222549f466bad94"
+          }
+        }
+      ],
       "gates": {
         "structure": "passed",
+        "compatibility-records": "passed",
+        "protocol-surface": "passed",
+        "rust-format": "passed",
         "rust-lint": "passed",
         "rust-tests": "passed",
-        "ssh-session": "passed",
-        "apple-rust-arm64": "unavailable",
-        "apple-rust-x86_64": "unavailable",
-        "bridge-build": "unavailable",
-        "bridge-import": "unavailable",
-        "compatibility-records": "passed",
-        "contract-fixtures": "unavailable",
-        "live-host": "unavailable",
-        "macos-app": "unavailable",
-        "portability-audit": "unavailable",
-        "protocol-surface": "unavailable",
-        "rust-format": "unavailable",
-        "swift-package": "unavailable",
+        "contract-fixtures": "passed",
+        "whitespace": "passed",
+        "apple-rust-arm64": "passed",
+        "apple-rust-x86_64": "passed",
+        "portability-audit": "passed",
+        "bridge-build": "passed",
+        "swift-package": "passed",
+        "bridge-import": "passed",
+        "macos-app": "passed",
         "upstream-linux": "unavailable",
-        "whitespace": "unavailable"
+        "live-host": "passed",
+        "ssh-session": "passed",
+        "video-decode": "unavailable",
+        "metal-chroma": "unavailable",
+        "remote-input": "unavailable",
+        "displays-reconnect": "unavailable",
+        "clipboard": "unavailable",
+        "acceptance": "unavailable"
       },
       "required": [
         "apple-rust-arm64",
