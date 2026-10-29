@@ -21,6 +21,10 @@ release budgets rather than inventing unmeasured latency/FPS claims.
 - [ ] Provide fixture/replay checks runnable without a compositor, native decoder/
   Metal integration checks on Macs, and a separate live Linux/Hyprland acceptance
   script/manual recipe. Hardware-dependent cases must identify their host/driver.
+- [ ] Complete the dedicated [SSH multi-hop implementation and live validation
+  task](ssh-multi-hop.md): real one-/multi-bastion routes, per-hop security and
+  authentication, native video, failure/cleanup tests and required implementation
+  corrections. Record unavailable routes and keep this subtask open until verified.
 - [ ] Measure first-frame time, decode/presentation latency, input response, FPS,
   compressed/FFI bandwidth, frame queue/byte counts, CPU/GPU use and memory. Document
   clock methodology; do not subtract unsynchronized server/client clocks as latency.
@@ -44,5 +48,7 @@ release budgets rather than inventing unmeasured latency/FPS claims.
   stuck keys, colour corruption or clipboard leakage across ownership changes.
 - Every implemented feature survives repeated connect/disconnect, sleep/wake,
   resize and failure recovery. Local release controls remain usable under load.
+- SSH multi-hop acceptance includes real routes and regression-covered corrections
+  described in [the dedicated subtask](ssh-multi-hop.md), beyond task 05's mocks.
 - CI enforces deterministic regressions, and the documented hardware suite is run
   for release candidates and upstream changes affecting native interoperability.

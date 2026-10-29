@@ -110,12 +110,12 @@ compatibility, and build risks before UI breadth.
 | 04 | [build-rust-swift-bridge](04-build-rust-swift-bridge/README.md) | 02 | Repeatable bindings/XCFramework and Swift import/callback smoke test — **merged**: driver, UniFFI facade, universal bridge, Swift package tests and app link |
 | 05 | [implement-ssh-session](05-implement-ssh-session/README.md) | 03, 04 | Authenticated headless SSH and Finder-launch transport probes; bounded video delivery, acknowledgments and clean cancellation — **in review** |
 | 06 | [create-native-macos-app](06-create-native-macos-app/README.md) | 04 | Native app shell; typed session UI; deterministic Xcode build |
-| 07 | [decode-and-display-h264](07-decode-and-display-h264/README.md) | 05, 06 | Live Single420 video, correct geometry and asynchronous decode feedback |
+| 07 | [decode-and-display-h264](07-decode-and-display-h264/README.md) | 05, 06 | Real VideoToolbox Single420 decode/presentation, Finder-to-server validation and feedback from native callbacks |
 | 08 | [render-full-chroma-metal](08-render-full-chroma-metal/README.md) | 07 | Dual420 pair decoding and reference-verified full-chroma rendering |
 | 09 | [implement-remote-input](09-implement-remote-input/README.md) | 07 | Focused pointer/keyboard control; escape; explicit keyboard-layout support |
 | 10 | [implement-displays-and-reconnection](10-implement-displays-and-reconnection/README.md) | 08, 09 | Mirror/headless modes, resize, reconnect and session cleanup |
 | 11 | [implement-shared-clipboard](11-implement-shared-clipboard/README.md) | 05, 06, 10 | On-demand text/image/file clipboard, cancellation and session isolation |
-| 12 | [validate-performance-and-end-to-end](12-validate-performance-and-end-to-end/README.md) | 03, 08, 09, 10, 11 | Cross-platform acceptance matrix and measured latency/memory/quality |
+| 12 | [validate-performance-and-end-to-end](12-validate-performance-and-end-to-end/README.md) | 03, 08, 09, 10, 11 | Cross-platform acceptance, measured latency/memory/quality, and [real SSH multi-hop implementation/validation](12-validate-performance-and-end-to-end/ssh-multi-hop.md) |
 | 13 | [package-and-release-macos](13-package-and-release-macos/README.md) | 12 | Tested universal app, signing/notarization workflow and release provenance |
 
 Tasks 04 and 06 can progress alongside compatible work once their prerequisites

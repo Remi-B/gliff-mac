@@ -47,3 +47,5 @@ session lifecycle, delivering validated encoded data through the bridge.
   clipboard contents. No application password store is required for this milestone.
 
 Implementation and verification limits: [implementation record](implementation-record.md).
+Follow-ups: [native VideoToolbox decode/display (task 07)](../07-decode-and-display-h264/README.md)
+and [SSH multi-hop implementation/live validation (task 12)](../12-validate-performance-and-end-to-end/ssh-multi-hop.md).
