@@ -13,7 +13,7 @@ crate-type = ["rlib", "staticlib"]
 gliff-client-core.workspace = true
 gliff-proto.workspace = true
 thiserror.workspace = true
-tokio = { workspace = true, features = ["io-util", "rt-multi-thread", "sync", "time"] }
+tokio = { workspace = true, features = ["process", "io-util", "rt-multi-thread", "sync", "time"] }
 uniffi.workspace = true
 
 [lints]

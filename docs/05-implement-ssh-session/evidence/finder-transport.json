@@ -1,0 +1,19 @@
+{
+  "status": "passed",
+  "headless": true,
+  "chroma": "Single420",
+  "frames": 67,
+  "acks": 67,
+  "pongs": 1,
+  "peak_frames": 2,
+  "peak_bytes": 25920,
+  "path_present": true,
+  "agent_present": true,
+  "kind": "public-facade transport probe; synthetic decode completions",
+  "launcher": "Finder via AppleEvent, temporary native app wrapper",
+  "gui_path": "/usr/bin:/bin:/usr/sbin:/sbin",
+  "shell_sentinel_present": false,
+  "client_platform": "macOS 27.0.1 arm64, Xcode 27.1",
+  "server_version": "gliff-server 0.4.1",
+  "upstream_sha": "58c742452ded3f10a2ce61f60eb4845f18205e29"
+}

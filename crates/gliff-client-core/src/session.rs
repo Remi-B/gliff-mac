@@ -241,6 +241,7 @@ struct Entry {
     generation: u32,
     bytes: u64,
     outcome: Option<FrameOutcome>,
+    admitted: tokio::time::Instant,
 }
 
 impl Flight {
@@ -269,6 +270,7 @@ pub struct Control {
     last_keyframe: AtomicU64,
     counters: Counters,
     started: AtomicBool,
+    connected: AtomicBool,
 }
 
 /// The driver's half of a [`Control`], consumed by [`run`].
@@ -297,6 +299,7 @@ impl Control {
             last_keyframe: AtomicU64::new(0),
             counters: Counters::default(),
             started: AtomicBool::new(false),
+            connected: AtomicBool::new(false),
         });
         let driver = Driver {
             control: control.clone(),
@@ -425,6 +428,7 @@ impl Control {
             generation,
             bytes,
             outcome,
+            admitted: tokio::time::Instant::now(),
         });
         flight.bytes += bytes;
         let c = &self.counters;
@@ -447,7 +451,11 @@ impl Control {
         (acks, std::mem::take(&mut flight.lose_reference))
     }
 
-    fn finish(&self) {
+    pub fn connected(&self) -> bool {
+        self.connected.load(Ordering::Acquire)
+    }
+
+    pub fn finish(&self) {
         let mut flight = self.flight();
         flight.running = false;
         flight.entries.clear();
@@ -488,6 +496,18 @@ where
     let result = tokio::select! {
         biased;
         _ = cancel.wait_for(|c| *c) => Ok(SessionEnd::Cancelled),
+        message = async {
+            let start = tokio::time::Instant::now();
+            loop {
+                tokio::time::sleep(Duration::from_millis(100)).await;
+                if control.generation() == 0 && start.elapsed() >= Duration::from_secs(20) {
+                    break "server startup exceeded 20 seconds before its first stream configuration";
+                }
+                if control.flight().entries.front().is_some_and(|e| e.admitted.elapsed() >= Duration::from_secs(15)) {
+                    break "native decode stalled for 15 seconds";
+                }
+            }
+        } => Err(gliff_transport::Error::from(std::io::Error::new(std::io::ErrorKind::TimedOut, message)).into()),
         result = session.drive(&config) => result,
     };
     // After an interrupted write the stream is mid-frame: a Bye would be
@@ -541,7 +561,14 @@ where
                 features: Vec::new(),
             },
         };
-        self.write(&hello).await?;
+        tokio::time::timeout(Duration::from_secs(20), self.write(&hello))
+            .await
+            .map_err(|_| {
+                SessionError::Transport(gliff_transport::Error::from(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "Hello write timed out",
+                )))
+            })??;
         loop {
             if *self.cancel.borrow() {
                 return Ok(SessionEnd::Cancelled);
@@ -643,11 +670,14 @@ where
                 session,
                 outputs,
                 features,
-            } => Delivery::HelloAck {
-                session,
-                outputs,
-                features,
-            },
+            } => {
+                self.control.connected.store(true, Ordering::Release);
+                Delivery::HelloAck {
+                    session,
+                    outputs,
+                    features,
+                }
+            }
             ServerEvent::Config(config) => {
                 if config.rebuild {
                     self.control
@@ -714,6 +744,86 @@ where
             biased;
             _ = self.cancel.wait_for(|c| *c) => Ok(Err(Cancelled)),
             sent = self.deliveries.send(T::from(delivery)) => Ok(sent.map_err(|_| Cancelled)),
+        }
+    }
+}
+
+#[cfg(test)]
+mod deadline_tests {
+    use super::*;
+    #[tokio::test(start_paused = true)]
+    async fn hello_ack_without_configuration_still_has_a_startup_deadline() {
+        use tokio::io::AsyncWriteExt;
+        let fixture = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../tests/fixtures/streams/synthetic-single420.gliffstream"),
+        )
+        .unwrap();
+        let header_len = u32::from_le_bytes(fixture[..4].try_into().unwrap()) as usize;
+        let (client, mut peer) = tokio::io::duplex(4096);
+        peer.write_all(&fixture[..8 + header_len]).await.unwrap();
+        let (reader, writer) = tokio::io::split(client);
+        let (control, driver) = Control::new(FrameBudget::default());
+        let (tx, _rx) = mpsc::channel::<Delivery>(32);
+        let config = SessionConfig {
+            support: DecoderSupport::h264(&[gliff_proto::ChromaMode::Single420]),
+            keymap: String::new(),
+            budget: FrameBudget::default(),
+            drain_on_close: false,
+        };
+        let error = run(reader, writer, config, driver, tx).await.unwrap_err();
+        assert!(control.connected());
+        assert_eq!(control.generation(), 0);
+        assert!(error
+            .to_string()
+            .contains("before its first stream configuration"));
+        assert!(!control.is_running());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn unreported_native_frame_fails_after_fifteen_seconds() {
+        let (reader, _peer) = tokio::io::duplex(1);
+        let (control, driver) = Control::new(FrameBudget::default());
+        control.connected.store(true, Ordering::Release);
+        control.admit(1, 0, 1, None);
+        let (tx, _rx) = mpsc::channel::<Delivery>(32);
+        let config = SessionConfig {
+            support: DecoderSupport::h264(&[gliff_proto::ChromaMode::Single420]),
+            keymap: String::new(),
+            budget: FrameBudget::default(),
+            drain_on_close: false,
+        };
+        let start = tokio::time::Instant::now();
+        let error = run(reader, tokio::io::sink(), config, driver, tx)
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("native decode stalled"));
+        assert!(start.elapsed() >= Duration::from_secs(15));
+        assert!(start.elapsed() < Duration::from_secs(16));
+        assert!(!control.is_running());
+    }
+    #[tokio::test(start_paused = true)]
+    async fn blocked_hello_and_silent_peer_have_bounded_startup() {
+        for blocked in [true, false] {
+            let (reader, _peer) = tokio::io::duplex(1);
+            let (writer, _sink) = tokio::io::duplex(1);
+            let (control, driver) = Control::new(FrameBudget::default());
+            let (tx, _rx) = mpsc::channel::<Delivery>(32);
+            let config = SessionConfig {
+                support: DecoderSupport::h264(&[gliff_proto::ChromaMode::Single420]),
+                keymap: String::new(),
+                budget: FrameBudget::default(),
+                drain_on_close: false,
+            };
+            let result = if blocked {
+                run(reader, writer, config, driver, tx).await
+            } else {
+                run(reader, tokio::io::sink(), config, driver, tx).await
+            };
+            assert!(
+                matches!(result, Err(SessionError::Transport(gliff_transport::Error::Io(ref error))) if error.kind() == std::io::ErrorKind::TimedOut)
+            );
+            assert!(!control.is_running());
         }
     }
 }

@@ -110,6 +110,8 @@ fn invalid_targets_and_options_are_typed_errors() {
         user: user.map(Into::into),
         port,
         server_path: None,
+        identity_file: None,
+        headless: false,
     };
     let single = options(vec![ChromaMode::Single420]);
     for target in [
@@ -145,13 +147,8 @@ fn invalid_targets_and_options_are_typed_errors() {
         ));
     }
     let session = GliffSession::new(ssh("host", Some("me"), Some(22)), single).unwrap();
-    let recorder = Arc::new(Recorder::default());
-    assert!(matches!(
-        session.start(recorder.clone()),
-        Err(GliffError::Unsupported { .. })
-    ));
-    // A refused start does not consume the session's delegate.
-    assert_eq!(Arc::strong_count(&recorder), 1);
+    session.cancel();
+    session.start(Arc::new(Recorder::default())).unwrap();
 }
 
 #[test]
