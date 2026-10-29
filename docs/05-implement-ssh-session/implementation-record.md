@@ -1,6 +1,6 @@
 # Task 05 implementation record
 
-Updated: 2026-10-29. Branch `feat/ssh-session`. Status: in review.
+Updated: 2026-10-30. Branch `feat/ssh-session`. Status: in review.
 Dependencies 03 and 04 are merged. Upstream remains the unmodified pinned
 `58c742452ded3f10a2ce61f60eb4845f18205e29` (`gliff-server 0.4.1`).
 
@@ -38,12 +38,12 @@ H.264/Single420; dual-stream replay remains for fixtures until task 08.
 
 ## Acceptance evidence
 
-Final clean source `52a4381` on macOS 27.0.1 arm64 / Xcode 27.1 / Rust 1.90.0:
+Final clean source `497a82b` on macOS 27.0.1 arm64 / Xcode 27.1 / Rust 1.90.0:
 
 | Check | Evidence |
 | --- | --- |
-| Full entrypoint | `scripts/check.sh --live-evidence build/live/58c742452ded-cpu-single420/evidence.json`: 17 passed, 0 failed, 7 unavailable (upstream Linux CI and six later tasks) |
-| Rust | 49 app tests plus 3 fixture-tool tests; Clippy with warnings denied; rustfmt |
+| Full entrypoint | `scripts/check.sh`: 16 passed, 0 failed, 8 unavailable; live-server evidence collected separately, upstream Linux runs in CI, six gates belong to later tasks |
+| Rust | 51 app tests plus 3 fixture-tool tests; Clippy with warnings denied; rustfmt |
 | Native builds | Both Apple Rust targets, dependency/portability audit, matching generated bindings, universal XCFramework and Xcode app |
 | Swift | Nine Swift tests passed on arm64; x86_64 package/tests compiled |
 | Protocol faults | Existing replay/mock tests cover malformed/unknown messages, incompatible versions, truncated EOF, payload association, cancellation, ordered feedback and recovery |
@@ -51,7 +51,7 @@ Final clean source `52a4381` on macOS 27.0.1 arm64 / Xcode 27.1 / Rust 1.90.0:
 | Process lifecycle | Stderr flood and repeated cleanup; observed PID tests for a TERM-resistant child and a proxy descendant retaining stderr; stderr worker abort/join test. Process regressions passed three consecutive runs |
 | Jump security | Real `ssh -G` evaluation for destination and jump aliases preserves user/port/identity while overriding permissive auth, verification and forwarding; generated ProxyCommand retains the policy file |
 | Public-facade live transport | Headless sessions delivered/acked 70 frames, then sequential cycles of 63 and 54, with one pong each and clean cancellation |
-| Finder environment | Actual Finder launch through a temporary native app: PATH `/usr/bin:/bin:/usr/sbin:/sbin`, GUI agent present, shell sentinel absent. After review fixes: 53 delivered frames, 53 acks, one pong, state closed |
+| Finder environment | Actual Finder launch through a temporary native app: PATH `/usr/bin:/bin:/usr/sbin:/sbin`, GUI agent present, shell sentinel absent. After both reviews: 39 delivered frames, 39 acks, one pong, state closed |
 | Live reference decode | Unmodified pinned CPU server; four frames recorded/decoded with the reference decoder; client Resize changed 1920×1080 to 1280×800 |
 
 The Finder metadata is [finder-transport.json](evidence/finder-transport.json);
@@ -79,8 +79,8 @@ Sol reported four P2 findings, all verified and fixed by the parent:
 Integration also fixed logged clean EOF, stderr masking typed incompatibility,
 executable-permission classification, and startup timeout after HelloAck. CI,
 qualification and the full evidence/review report are published on the PR.
-The current-pin record is qualified from clean local/live source `52a4381` and
-the successful CI push run on `b8f699a`: all 18 required gates passed across
+The current-pin record is qualified from clean local/live source `497a82b` and
+the successful CI push run on `4dcf20a`: all 18 required gates passed across
 local macOS 27/Xcode 27.1, CI macOS 15/Xcode 16.4, Ubuntu and Arch upstream.
 Only documentation and compatibility metadata changed after the tested code.
 
@@ -105,3 +105,14 @@ neutral diagnostics after an established session exits, align the bridge
 contract with actual states/validation, and reject literal remote `~/...` paths
 with setup guidance. Timeout, live-exit and path-validation regressions cover
 the behavior changes; the existing process/PID tests cover teardown.
+
+## CI scope validation
+
+The additional CI change has 16 passing tests using real temporary git histories
+and passes actionlint v1.7.7. It conservatively reuses successful ancestral push
+validation only when the tested tree differs under `docs/` alone. API failures,
+unvalidated code, new base-branch code and manual/reusable runs use full checks.
+Full push/PR checks passed on `4dcf20a` and the qualification-only commit
+`771a84a`; all 18 required compatibility gates are qualified. This documentation
+update changes only `docs/` and is the live acceptance case for skipping the
+expensive jobs while retaining the scope check.

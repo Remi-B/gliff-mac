@@ -56,6 +56,27 @@ source URL, three app workspace members, real vendor dependency paths, and absen
 of Linux UI/video/encoder crates in the resolved application graph. Upstream tests are not
 mistaken for app workspace members or run implicitly by `cargo test --workspace`.
 
+## Documentation-only CI
+
+App checks always run a lightweight Ubuntu `scope` job: checkout, the 16 scope
+regressions, and one read-only Actions API request. The Rust, macOS and upstream
+Linux build jobs are skipped when the tested tree differs from a successful
+ancestral push of the same workflow only by nonempty changes under `docs/`.
+Their check names remain present, so required checks can complete normally.
+
+This also applies to documentation-only commits added to an existing code PR,
+provided that its code already passed full CI. The scope compares the actual PR
+merge tree, so new base-branch code requires validation. A code/root-file change,
+missing baseline/history, API error, unknown event, manual run or reusable
+upstream-candidate run executes the full checks. An empty/failed scope result
+also defaults to full checks. No workflow-level path filter suppresses the
+required App checks.
+
+Run the decision regressions locally with
+`python3 -m unittest discover -s tests/ci`. The job summary records the decision
+and validated commit. The separate short upstream-automation PR rehearsal keeps
+its existing path filters; this optimization targets the expensive App builds.
+
 ## Application shell and bridge
 
 ```bash
