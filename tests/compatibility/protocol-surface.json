@@ -1,0 +1,49 @@
+{
+  "client_messages": {
+    "Bye": "820c80",
+    "ClipboardAbort": "820e8102",
+    "ClipboardAck": "820d820210",
+    "ClipboardData": "820a84020010f5",
+    "ClipboardOffer": "82088301817818746578742f706c61696e3b636861727365743d7574662d388183696469722f612e74787403f4",
+    "ClipboardRequest": "820983020182008169696d6167652f706e67",
+    "FrameAck": "820682071903e8",
+    "Hello": "8200830160858101190f0019087082010281676578616d706c65",
+    "Key": "820282181ef5",
+    "Keymap": "820f816e786b625f6b65796d6170207b7d3b",
+    "Ping": "820b81182a",
+    "PointerAxis": "82058400fbc02e00000000000020f4",
+    "PointerButton": "820482190110f4",
+    "PointerMotion": "820382fb3ff8000000000000fb4004000000000000",
+    "Pong": "821081182a",
+    "RequestKeyframe": "820780",
+    "Resize": "820183190500190320fa40000000"
+  },
+  "error_codes": {
+    "no_chroma": 2,
+    "no_codec": 3,
+    "setup": 256,
+    "version": 1
+  },
+  "features": [],
+  "frame": {
+    "header_len": 8,
+    "max_frame_body": 1048576,
+    "max_payload": 67108864
+  },
+  "protocol_version": 1,
+  "server_messages": {
+    "ClipboardAbort": "820b8106",
+    "ClipboardAck": "820a820603",
+    "ClipboardData": "820784061a0004000003f4",
+    "ClipboardOffer": "82058305816d746578742f7572692d6c6973748183696469722f612e74787403f4",
+    "ClipboardRequest": "820683060582018100",
+    "CursorPos": "820484fb4024000000000000fb403400000000000001f5",
+    "CursorShape": "82038601181818180402190900",
+    "Error": "820983190100746e6f20487970726c616e6420696e7374616e636501",
+    "HelloAck": "8200840182f567676c6966662d3181846444502d31190a001905a01904e280",
+    "Ping": "820c81182b",
+    "Pong": "820882182a192328",
+    "StreamConfig": "82018b0101001905001903201907d0450000000167450000000168190500190320183c",
+    "VideoFrame": "82028603198235f58184000018401820190400190200"
+  }
+}
