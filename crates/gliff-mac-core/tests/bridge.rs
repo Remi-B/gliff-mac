@@ -110,6 +110,8 @@ fn invalid_targets_and_options_are_typed_errors() {
         user: user.map(Into::into),
         port,
         server_path: None,
+        identity_file: None,
+        headless: false,
     };
     let single = options(vec![ChromaMode::Single420]);
     for target in [
@@ -118,6 +120,7 @@ fn invalid_targets_and_options_are_typed_errors() {
         ssh("a b", None, None),
         ssh("host", Some("-l"), None),
         ssh("host", Some("me@x"), None),
+        ssh("host", Some("user$"), None),
         ssh("host", None, Some(0)),
         ConnectionTarget::Replay { stream: vec![] },
     ] {
@@ -145,13 +148,24 @@ fn invalid_targets_and_options_are_typed_errors() {
         ));
     }
     let session = GliffSession::new(ssh("host", Some("me"), Some(22)), single).unwrap();
-    let recorder = Arc::new(Recorder::default());
+    session.cancel();
+    session.start(Arc::new(Recorder::default())).unwrap();
+}
+
+#[test]
+fn remote_home_paths_are_rejected_with_setup_guidance() {
+    let target = ConnectionTarget::Ssh {
+        host: "host".into(),
+        user: None,
+        port: None,
+        server_path: Some("~/bin/gliff-server".into()),
+        identity_file: None,
+        headless: true,
+    };
     assert!(matches!(
-        session.start(recorder.clone()),
-        Err(GliffError::Unsupported { .. })
+        GliffSession::new(target, options(vec![ChromaMode::Single420])),
+        Err(GliffError::InvalidOptions { message }) if message.contains("absolute path")
     ));
-    // A refused start does not consume the session's delegate.
-    assert_eq!(Arc::strong_count(&recorder), 1);
 }
 
 #[test]

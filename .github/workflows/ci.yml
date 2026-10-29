@@ -13,13 +13,37 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: app-${{ inputs.ref || github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
+  # Cheap and always running. Decides whether the expensive jobs below run:
+  # they are skipped (which counts as success for required checks) only when
+  # docs/ is the sole difference from a commit already validated by a full
+  # run. Any failure here leaves full unset, which runs everything.
+  scope:
+    runs-on: ubuntu-24.04
+    outputs:
+      full: ${{ steps.scope.outputs.full }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          fetch-depth: 0
+          submodules: false
+      - run: python3 -m unittest discover -s tests/ci
+      - id: scope
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          INPUT_REF: ${{ inputs.ref }}
+        run: python3 scripts/ci_scope.py
+
   rust:
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -47,6 +71,8 @@ jobs:
           if-no-files-found: ignore
 
   macos:
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: macos-15
     env:
       DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
@@ -79,6 +105,8 @@ jobs:
   # separate from the app graph: the Linux client/server must keep building
   # at the pinned or candidate SHA.
   upstream-linux:
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.full != 'false' }}
     runs-on: ubuntu-latest
     container: archlinux:base-devel
     steps:

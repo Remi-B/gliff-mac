@@ -51,7 +51,7 @@ fn runtime() -> &'static Runtime {
     })
 }
 
-enum Item {
+pub(crate) enum Item {
     Delivery(Delivery),
     Ended(SessionEnd),
 }
@@ -66,6 +66,7 @@ impl From<Delivery> for Item {
 #[derive(uniffi::Object)]
 pub struct GliffSession {
     config: core::SessionConfig,
+    terminal: Arc<Mutex<Option<SessionState>>>,
     control: Arc<Control>,
     /// Taken by `start`.
     pending: Mutex<Option<(ConnectionTarget, Driver)>>,
@@ -77,10 +78,16 @@ impl GliffSession {
     #[uniffi::constructor]
     pub fn new(target: ConnectionTarget, options: SessionOptions) -> Result<Arc<Self>, GliffError> {
         target.validate()?;
-        let config = options.to_core()?;
+        let mut config = options.to_core()?;
+        if matches!(target, ConnectionTarget::Ssh { .. }) {
+            config.support = gliff_client_core::video::DecoderSupport::h264(&[
+                gliff_proto::ChromaMode::Single420,
+            ]);
+        }
         let (control, driver) = Control::new(config.budget);
         Ok(Arc::new(Self {
             config,
+            terminal: Arc::new(Mutex::new(None)),
             control,
             pending: Mutex::new(Some((target, driver))),
         }))
@@ -92,15 +99,6 @@ impl GliffSession {
         let Some((target, driver)) = pending.take() else {
             return Err(GliffError::AlreadyStarted);
         };
-        let stream = match target {
-            ConnectionTarget::Replay { stream } => stream,
-            ssh @ ConnectionTarget::Ssh { .. } => {
-                *pending = Some((ssh, driver));
-                return Err(GliffError::Unsupported {
-                    message: "the SSH transport arrives in task 05".into(),
-                });
-            }
-        };
         let (tx, rx) = mpsc::channel(DELIVERY_QUEUE);
         let control = self.control.clone();
         std::thread::Builder::new()
@@ -109,18 +107,35 @@ impl GliffSession {
             .map_err(|e| GliffError::Transport {
                 message: format!("cannot start the delivery thread: {e}"),
             })?;
-        let config = core::SessionConfig {
-            drain_on_close: true,
-            ..self.config.clone()
-        };
+        let mut config = self.config.clone();
+        let control = self.control.clone();
+        let terminal = self.terminal.clone();
         runtime().spawn(async move {
-            let reader = std::io::Cursor::new(stream);
-            let result = core::run(reader, tokio::io::sink(), config, driver, tx.clone()).await;
-            let end = match result {
-                Ok(core::SessionEnd::Closed) => SessionEnd::Closed,
-                Ok(core::SessionEnd::Cancelled) => SessionEnd::Cancelled,
-                Err(e) => SessionEnd::Failed { error: e.into() },
+            let end = match target {
+                ConnectionTarget::Replay { stream } => {
+                    config.drain_on_close = true;
+                    match core::run(
+                        std::io::Cursor::new(stream),
+                        tokio::io::sink(),
+                        config,
+                        driver,
+                        tx.clone(),
+                    )
+                    .await
+                    {
+                        Ok(core::SessionEnd::Closed) => SessionEnd::Closed,
+                        Ok(core::SessionEnd::Cancelled) => SessionEnd::Cancelled,
+                        Err(e) => SessionEnd::Failed { error: e.into() },
+                    }
+                }
+                target => crate::ssh::run(target, config, driver, tx.clone(), control).await,
             };
+            *terminal.lock().unwrap_or_else(|e| e.into_inner()) =
+                Some(if matches!(end, SessionEnd::Failed { .. }) {
+                    SessionState::Failed
+                } else {
+                    SessionState::Closed
+                });
             // The delivery thread drains until this item, so it always
             // arrives and is the last callback.
             let _ = tx.send(Item::Ended(end)).await;
@@ -144,6 +159,28 @@ impl GliffSession {
     /// dropped and `on_ended(Cancelled)` follows (unless it already ended).
     pub fn cancel(&self) {
         self.control.cancel();
+    }
+
+    pub fn state(&self) -> SessionState {
+        if let Some(state) = *self.terminal.lock().unwrap_or_else(|e| e.into_inner()) {
+            return state;
+        }
+        if self.control.is_cancelled() || !self.control.is_running() {
+            return SessionState::Stopping;
+        }
+        if self.control.generation() > 0 {
+            return SessionState::Streaming;
+        }
+        if self
+            .pending
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .is_some()
+        {
+            SessionState::Connecting
+        } else {
+            SessionState::Handshaking
+        }
     }
 
     pub fn stats(&self) -> SessionStats {

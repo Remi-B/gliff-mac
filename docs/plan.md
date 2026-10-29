@@ -1,6 +1,6 @@
 # Gliff macOS implementation plan
 
-Status: task 01 complete; task 02 in review (live captures pending); tasks 03 and 04 in review; tasks 05–13 planned.
+Status: tasks 01–04 merged; task 05 in review; tasks 06–13 planned.
 Updated on 2026-10-29.
 
 Planning location: this specification/plan/task collection is versioned under
@@ -99,23 +99,23 @@ as the initial baseline, then validate each subsequent pin explicitly.
 ## Ordered tasks
 
 Each task has scope, dependencies, deliverables, and acceptance criteria in its
-folder. Task 01 is **complete**, including local macOS build validation; tasks 02, 03 and 04 are **in review**; the remaining tasks are **planned**. The order prioritizes repository ownership,
+folder. Tasks 01–04 are **merged**, including local macOS and live-server validation; task 05 is **in review**; tasks 06–13 are **planned**. The order prioritizes repository ownership,
 compatibility, and build risks before UI breadth.
 
 | # | Task | Depends on | Completion evidence |
 | --- | --- | --- | --- |
 | 01 | [setup-project-structure](01-setup-project-structure/README.md) | — | Fresh app history; pinned submodule; local fork backup; bootstrap/checks and universal Xcode build passed in the macOS VM |
-| 02 | [audit-upstream-protocol-and-portability](02-audit-upstream-protocol-and-portability/README.md) | 01 | Real contract fixtures; selected crates compile on macOS; platform boundary verified — **in review**: boundary, contract and server-equivalent fixtures done; live captures pending |
-| 03 | [automate-upstream-sync-and-compatibility](03-automate-upstream-sync-and-compatibility/README.md) | 02 | Repeatable upstream bump/revert and compatibility CI; later gates added as implemented — **in review**: tooling, gates, CI, records and live-host check done; bump/rollback rehearsed |
-| 04 | [build-rust-swift-bridge](04-build-rust-swift-bridge/README.md) | 02 | Repeatable bindings/XCFramework and Swift import/callback smoke test — **in review**: driver, UniFFI facade, build entrypoint, Swift package tests and app link done |
-| 05 | [implement-ssh-session](05-implement-ssh-session/README.md) | 03, 04 | Authenticated handshake, bounded video delivery, acknowledgments and clean cancellation |
+| 02 | [audit-upstream-protocol-and-portability](02-audit-upstream-protocol-and-portability/README.md) | 01 | Real contract fixtures; selected crates compile on macOS; platform boundary verified — **merged**: contracts, fixtures, portable boundary and real CPU/GPU captures |
+| 03 | [automate-upstream-sync-and-compatibility](03-automate-upstream-sync-and-compatibility/README.md) | 02 | Repeatable upstream bump/revert and compatibility CI; later gates added as implemented — **merged**: tooling, gates, CI, records and live-host checks; bump/rollback rehearsed |
+| 04 | [build-rust-swift-bridge](04-build-rust-swift-bridge/README.md) | 02 | Repeatable bindings/XCFramework and Swift import/callback smoke test — **merged**: driver, UniFFI facade, universal bridge, Swift package tests and app link |
+| 05 | [implement-ssh-session](05-implement-ssh-session/README.md) | 03, 04 | Authenticated headless SSH and Finder-launch transport probes; bounded video delivery, acknowledgments and clean cancellation — **in review** |
 | 06 | [create-native-macos-app](06-create-native-macos-app/README.md) | 04 | Native app shell; typed session UI; deterministic Xcode build |
-| 07 | [decode-and-display-h264](07-decode-and-display-h264/README.md) | 05, 06 | Live Single420 video, correct geometry and asynchronous decode feedback |
+| 07 | [decode-and-display-h264](07-decode-and-display-h264/README.md) | 05, 06 | Real VideoToolbox Single420 decode/presentation, Finder-to-server validation and feedback from native callbacks |
 | 08 | [render-full-chroma-metal](08-render-full-chroma-metal/README.md) | 07 | Dual420 pair decoding and reference-verified full-chroma rendering |
 | 09 | [implement-remote-input](09-implement-remote-input/README.md) | 07 | Focused pointer/keyboard control; escape; explicit keyboard-layout support |
 | 10 | [implement-displays-and-reconnection](10-implement-displays-and-reconnection/README.md) | 08, 09 | Mirror/headless modes, resize, reconnect and session cleanup |
 | 11 | [implement-shared-clipboard](11-implement-shared-clipboard/README.md) | 05, 06, 10 | On-demand text/image/file clipboard, cancellation and session isolation |
-| 12 | [validate-performance-and-end-to-end](12-validate-performance-and-end-to-end/README.md) | 03, 08, 09, 10, 11 | Cross-platform acceptance matrix and measured latency/memory/quality |
+| 12 | [validate-performance-and-end-to-end](12-validate-performance-and-end-to-end/README.md) | 03, 08, 09, 10, 11 | Cross-platform acceptance, measured latency/memory/quality, and [real SSH multi-hop implementation/validation](12-validate-performance-and-end-to-end/ssh-multi-hop.md) |
 | 13 | [package-and-release-macos](13-package-and-release-macos/README.md) | 12 | Tested universal app, signing/notarization workflow and release provenance |
 
 Tasks 04 and 06 can progress alongside compatible work once their prerequisites

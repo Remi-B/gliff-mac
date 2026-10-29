@@ -5,6 +5,7 @@
 //! for thread ownership, delivery order, budgets and teardown.
 
 mod session;
+mod ssh;
 mod types;
 
 pub use session::{GliffSession, SessionDelegate};

@@ -18,12 +18,12 @@ import Testing
         let options = SessionOptions(chroma: [.single420])
         for host in ["", "-oProxyCommand=touch /tmp/x", "host name"] {
             #expect(throws: GliffError.self) {
-                _ = try GliffSession(target: .ssh(host: host, user: nil, port: nil, serverPath: nil),
+                _ = try GliffSession(target: .ssh(host: host, user: nil, port: nil, serverPath: nil, identityFile: nil, headless: true),
                                      options: options)
             }
         }
         do {
-            _ = try GliffSession(target: .ssh(host: "host", user: nil, port: 0, serverPath: nil),
+            _ = try GliffSession(target: .ssh(host: "host", user: nil, port: 0, serverPath: nil, identityFile: nil, headless: true),
                                  options: options)
             Issue.record("port 0 was accepted")
         } catch let GliffError.InvalidOptions(message) {
@@ -37,19 +37,14 @@ import Testing
         }
     }
 
-    @Test func sshIsReportedUnsupportedUntilTask05() throws {
-        let session = try GliffSession(
-            target: .ssh(host: "example", user: "me", port: 22, serverPath: nil),
-            options: SessionOptions(chroma: [.single420]))
+    @Test func sshCancelledBeforeStartupEndsWithoutConnecting() async throws {
+        let session = try GliffSession(target: .ssh(host: "example", user: nil, port: nil,
+            serverPath: nil, identityFile: nil, headless: true), options: SessionOptions(chroma: [.single420]))
+        session.cancel()
         let recorder = Recorder()
-        #expect(throws: GliffError.Unsupported(message: "the SSH transport arrives in task 05")) {
-            try session.start(delegate: recorder)
-        }
-        #expect(throws: GliffError.NotRunning) {
-            // Cancelled before it ran: input is refused rather than queued.
-            session.cancel()
-            try session.sendInput(event: .pointerMotion(x: 1, y: 1))
-        }
+        try session.start(delegate: recorder)
+        #expect(await recorder.ended() == .cancelled)
+        #expect(session.state() == .closed)
     }
 
     @Test(arguments: Fixture.all)

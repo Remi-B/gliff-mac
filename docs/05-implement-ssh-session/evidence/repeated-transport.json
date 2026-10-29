@@ -1,0 +1,30 @@
+{
+  "client_source_sha": "315b474",
+  "sessions": [
+    {
+      "status": "passed",
+      "headless": true,
+      "chroma": "Single420",
+      "frames": 63,
+      "acks": 63,
+      "pongs": 1,
+      "peak_frames": 2,
+      "peak_bytes": 51840,
+      "path_present": true,
+      "agent_present": true
+    },
+    {
+      "status": "passed",
+      "headless": true,
+      "chroma": "Single420",
+      "frames": 54,
+      "acks": 54,
+      "pongs": 1,
+      "peak_frames": 2,
+      "peak_bytes": 30030,
+      "path_present": true,
+      "agent_present": true
+    }
+  ],
+  "completion": "synthetic native decode completion; transport acceptance only"
+}

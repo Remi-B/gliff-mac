@@ -56,6 +56,27 @@ source URL, three app workspace members, real vendor dependency paths, and absen
 of Linux UI/video/encoder crates in the resolved application graph. Upstream tests are not
 mistaken for app workspace members or run implicitly by `cargo test --workspace`.
 
+## Documentation-only CI
+
+App checks always run a lightweight Ubuntu `scope` job: checkout, the 16 scope
+regressions, and one read-only Actions API request. The Rust, macOS and upstream
+Linux build jobs are skipped when the tested tree differs from a successful
+ancestral push of the same workflow only by nonempty changes under `docs/`.
+Their check names remain present, so required checks can complete normally.
+
+This also applies to documentation-only commits added to an existing code PR,
+provided that its code already passed full CI. The scope compares the actual PR
+merge tree, so new base-branch code requires validation. A code/root-file change,
+missing baseline/history, API error, unknown event, manual run or reusable
+upstream-candidate run executes the full checks. An empty/failed scope result
+also defaults to full checks. No workflow-level path filter suppresses the
+required App checks.
+
+Run the decision regressions locally with
+`python3 -m unittest discover -s tests/ci`. The job summary records the decision
+and validated commit. The separate short upstream-automation PR rehearsal keeps
+its existing path filters; this optimization targets the expensive App builds.
+
 ## Application shell and bridge
 
 ```bash
@@ -145,3 +166,45 @@ Initial distribution is outside App Sandbox. The project enables hardened runtim
 as a baseline but adds no incoming-network/capture entitlements or signing secrets.
 System SSH config, agent and Finder launch behavior need validation in later session
 and release tasks; an entitlement alone does not establish access.
+
+## GUI SSH transport and headless probe
+
+`ConnectionTarget.ssh` takes host/config alias, optional user/port/server path,
+optional absolute identity file and a headless Boolean. It invokes `/usr/bin/ssh`
+with local argv, strict known-host verification, batch key/agent authentication,
+no TTY and no forwarding/control socket. Existing SSH config aliases, identities,
+agent and ProxyJump still apply. The remote executable is shell quoted and options
+are structured; there is no public raw command or SSH flags interface. Establish
+and verify the host fingerprint and key authentication in Terminal before GUI use.
+Missing GUI agents require an explicit identity or a configured accessible agent.
+Never weaken known-host verification to resolve errors.
+
+A transport-only live probe uses the public bridge API and always requests headless:
+
+```bash
+cargo run --locked -p gliff-mac-core --example ssh_probe -- omarchy-mbp.local remi /Users/remi/.ssh/id_ed25519_omarchy /home/remi/.cache/gliff-mac-live/gliff-server-58c742452ded3f10a2ce61f60eb4845f18205e29.bin
+```
+
+It prints no pixel/encoded data, reports frame completion synthetically (not a
+VideoToolbox decode claim), waits at most 30 seconds, cancels and waits for cleanup.
+Use `env -u PATH` with the built absolute probe path for a GUI-like PATH preflight;
+this does not prove a LaunchServices/Finder launch. Final acceptance must exercise
+the app through Finder with its real SSH_AUTH_SOCK and confirm no remaining SSH
+processes after repeated stop/quit. No live evidence is claimed by the process gate.
+
+The probe runs for ten seconds by default; set `GLIFF_PROBE_SECONDS=30` on a
+slow network (range 1–60). `GLIFF_PROBE_REPORT=/absolute/path/report.json` writes
+metadata and frame/ack/pong counters after success. It verifies a pong and an ack
+for each delivered frame, using synthetic decode completion; this is transport
+evidence, not VideoToolbox decoder validation. For GUI environment validation,
+launch a temporary app wrapper through **Finder**. A shell `open` invocation can
+pass the caller's environment, so it does not by itself prove Finder's PATH or
+agent behavior. Never capture the physical display during these checks.
+
+SSH policy is enforced through a private session-scoped config included by every
+OpenSSH-generated ProxyJump hop. It includes the ordinary user and system config
+after mandatory verification, batch-authentication and forwarding settings. No
+user SSH files are modified. Agent authentication is supported; forwarding the
+agent or X11 connection to the server is disabled. Proxy helpers belong to the
+session's process group and are terminated during cancellation. Custom helpers
+that deliberately daemonize into a separate session remain trusted user config.

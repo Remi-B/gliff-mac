@@ -26,6 +26,9 @@ This is a view-only alpha milestone; it does not claim Gliff's full-chroma quali
 - [ ] Report native decode results promptly to Rust for server frame feedback.
   Keep presentation metrics separate. Do not wait on the UI/main thread to read
   more transport bytes or acknowledge ordinary decode progress.
+- [ ] Replace task 05's synthetic decode-completion probe with an end-to-end native
+  path: real SSH frames enter VideoToolbox, actual asynchronous output callbacks
+  report decode results to Rust, and decoded buffers appear in the app surface.
 - [ ] Recreate decoder state on material format changes, ignore stale-generation
   output, flush/invalidate cleanly, request keyframes after decode failure, and keep
   the last valid still image. Frame-rate-only changes must not restart decoding.
@@ -37,6 +40,9 @@ This is a view-only alpha milestone; it does not claim Gliff's full-chroma quali
 
 - Baseline server and task-02 fixtures show correct live Single420 video, sharp
   geometry and expected colour without a Linux video dependency.
+- A Finder-launched app displays a real headless server stream through VideoToolbox
+  and acknowledges frames from actual native completion. Simulated acknowledgements
+  or successful reference-decoder replay alone do not satisfy this acceptance.
 - Tests exercise SPS/PPS changes, truncated samples, delayed output, static desktop,
   resize, decoder failure/keyframe recovery and disconnect with work in flight.
 - Queue growth remains bounded under a slow display; server pacing continues and

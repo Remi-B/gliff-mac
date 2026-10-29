@@ -26,6 +26,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: upstream-candidate-${{ github.event_name == 'pull_request' && github.ref || 'main' }}

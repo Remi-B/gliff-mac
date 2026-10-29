@@ -17,6 +17,8 @@ pub enum ConnectionTarget {
         port: Option<u16>,
         /// Remote server path; `gliff-server` on PATH by default.
         server_path: Option<String>,
+        identity_file: Option<String>,
+        headless: bool,
     },
     /// A recorded server-to-client stream (a `.gliffstream` fixture). Client
     /// messages are counted, not sent. For tests and diagnostics.
@@ -303,12 +305,32 @@ impl ConnectionTarget {
                 user,
                 port,
                 server_path,
+                identity_file,
+                ..
             } => {
                 check_word("host", host)?;
+                if !host
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b".-_:[]%".contains(&b))
+                {
+                    return Err(invalid("host must be a hostname, address or config alias"));
+                }
+                if let Some(path) = identity_file {
+                    if !path.starts_with('/') || path.chars().any(char::is_control) {
+                        return Err(invalid(
+                            "identity file must be an absolute path without control characters",
+                        ));
+                    }
+                }
                 if let Some(user) = user {
                     check_word("user", user)?;
-                    if user.contains('@') {
-                        return Err(invalid("user cannot contain '@'"));
+                    if !user
+                        .bytes()
+                        .all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b))
+                    {
+                        return Err(invalid(
+                            "user must contain only ASCII letters, digits, '.', '_' or '-'",
+                        ));
                     }
                 }
                 if *port == Some(0) {
@@ -316,6 +338,9 @@ impl ConnectionTarget {
                 }
                 if let Some(path) = server_path {
                     check_word("server path", path)?;
+                    if path.starts_with('~') {
+                        return Err(invalid("server path cannot use '~'; use an absolute path or an executable name on the remote PATH"));
+                    }
                 }
                 Ok(())
             }
@@ -467,4 +492,14 @@ impl From<core::Stats> for SessionStats {
             peak_in_flight_bytes: s.peak_in_flight_bytes,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum SessionState {
+    Connecting,
+    Handshaking,
+    Streaming,
+    Stopping,
+    Closed,
+    Failed,
 }
