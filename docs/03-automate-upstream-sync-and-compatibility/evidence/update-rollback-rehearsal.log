@@ -1,0 +1,277 @@
+
+### Disposable clone of the feature branch (<disposable>)
+pin 58c742452ded3f10a2ce61f60eb4845f18205e29
+
+### 1. Baseline candidate (upstream main == pin): rehearsal, nothing staged
+$ python3 scripts/upstream.py status
+pin:       58c742452ded3f10a2ce61f60eb4845f18205e29 (v0.4.1)
+upstream:  58c742452ded3f10a2ce61f60eb4845f18205e29 (v0.4.1)
+candidate: 58c742452ded3f10a2ce61f60eb4845f18205e29 (v0.4.1), same, 0 new commit(s)
+No update: the candidate is the current pin.
+[exit 0]
+$ python3 scripts/upstream.py update 58c742452ded3f10a2ce61f60eb4845f18205e29 --report <disposable>/baseline.md
+Candidate equals the current pin v0.4.1: rehearsal only, nothing staged. This is not an upgrade.
+Report: <disposable>/baseline.md
+[exit 0]
+$ git status --porcelain
+[exit 0]
+
+### 2. Abbreviated SHA and branch name are refused
+$ python3 scripts/upstream.py update 58c742452ded
+An explicit full 40-character lowercase commit SHA is required, not '58c742452ded'. Branches and tags are never pinned.
+[exit 1]
+$ python3 scripts/upstream.py update main
+An explicit full 40-character lowercase commit SHA is required, not 'main'. Branches and tags are never pinned.
+[exit 1]
+
+### 3. Stale pin (v0.4.0) is refused, not reported as an upgrade
+$ python3 scripts/upstream.py update 089662fd59ebcedb047eea22fd983d66b4216d73
+Candidate 089662fd59ebcedb047eea22fd983d66b4216d73 is stale relative to the pin 58c742452ded3f10a2ce61f60eb4845f18205e29; refusing. Pass --allow-stale only to rehearse an older pin in a disposable branch.
+[exit 1]
+
+### 4. Simulated newer upstream commit with an incompatible protocol change
+simulated upstream main cad820198a67e123dcd73373946ad9547cee70f7
+
+### 5. A clean bootstrap stays on the pin although upstream main moved
+$ scripts/bootstrap.sh
+Synchronizing submodule url for 'vendor/gliff'
+info: syncing channel updates for 1.90.0-aarch64-apple-darwin
+info: latest update on 2025-09-18 for version 1.90.0 (1159e78c4 2025-09-14)
+info: component clippy is up to date
+info: component rustfmt is up to date
+
+  1.90.0-aarch64-apple-darwin unchanged - rustc 1.90.0 (1159e78c4 2025-09-14)
+
+info: self-update is disabled for this build of rustup
+info: any updates to rustup will need to be fetched with your system package manager
+info: component rust-std is up to date
+info: component rust-std for target x86_64-apple-darwin is up to date
+Workspace: 3 app members; upstream: 58c742452ded3f10a2ce61f60eb4845f18205e29; no Linux UI/video stack.
+Bootstrap complete. Run scripts/check.sh.
+[exit 0]
+$ git -C vendor/gliff rev-parse HEAD
+58c742452ded3f10a2ce61f60eb4845f18205e29
+[exit 0]
+$ python3 scripts/upstream.py status --no-fetch
+pin:       58c742452ded3f10a2ce61f60eb4845f18205e29 (v0.4.1)
+upstream:  cad820198a67e123dcd73373946ad9547cee70f7 (v0.4.1-1-gcad8201)
+candidate: cad820198a67e123dcd73373946ad9547cee70f7 (v0.4.1-1-gcad8201), upgrade, 1 new commit(s)
+[exit 0]
+
+### 6. Update to the incompatible candidate
+$ python3 scripts/upstream.py update cad820198a67e123dcd73373946ad9547cee70f7 --no-fetch --report <disposable>/incompatible.md
+Staged upstream v0.4.1 -> v0.4.1-1-gcad8201 (upgrade). Lockfiles refreshed: none.
+Report: <disposable>/incompatible.md
+Next: scripts/check.sh, then record the gates; abort with scripts/upstream.py abort.
+[exit 0]
+$ git show --stat --format=%h %s HEAD
+a0743f1 Update upstream gliff to cad820198a67 (rehearsal)
+
+ tests/compatibility/matrix.json | 14 +++++++++++++-
+ upstream-revision               |  2 +-
+ vendor/gliff                    |  2 +-
+ 3 files changed, 15 insertions(+), 3 deletions(-)
+[exit 0]
+## Review flags
+
+- **PROTOCOL_VERSION changed**: breaking wire upgrade.
+- Message field numbering changed in `msg.rs`: review wire compatibility.
+- Crates in the app graph changed: Rust API review for the adapter.
+
+## Changes by review area
+
+### Protocol (wire types, framing, features)
+
+- `crates/gliff-proto/src/msg.rs` (+2 −2)
+
+### Transport (framed I/O, SSH spawning)
+
+- No change.
+
+### Session behaviour (handshake, acks, pacing, streams)
+
+- No change.
+
+### Input and keymaps
+
+- No change.
+
+### Clipboard
+
+- No change.
+
+### Colour and chroma reference
+
+- No change.
+
+### Manifests, lockfile and toolchain
+
+- No change.
+
+## Commits
+
+### 7. The gate fails with a useful reason
+$ python3 scripts/gates.py --only structure,compatibility-records,protocol-surface,rust-tests --summary <disposable>/incompatible-gates.json
+[structure] python3 scripts/check-structure.py
+[compatibility-records] python3 scripts/upstream.py check
+[protocol-surface] cargo test --locked -p gliff-client-core --test protocol_surface
+   Compiling minicbor v2.3.1
+   Compiling gliff-proto v0.4.1 (<disposable>/app/vendor/gliff/crates/gliff-proto)
+   Compiling gliff-transport v0.4.1 (<disposable>/app/vendor/gliff/crates/gliff-transport)
+   Compiling gliff-client-core v0.1.0 (<disposable>/app/crates/gliff-client-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.71s
+     Running tests/protocol_surface.rs (target/debug/deps/protocol_surface-1cb7cb79305ae122)
+
+running 2 tests
+test the_pinned_protocol_is_the_version_this_client_implements ... FAILED
+test the_pinned_wire_surface_matches_the_reviewed_record ... FAILED
+
+failures:
+
+---- the_pinned_protocol_is_the_version_this_client_implements stdout ----
+
+thread 'the_pinned_protocol_is_the_version_this_client_implements' panicked at crates/gliff-client-core/tests/protocol_surface.rs:343:5:
+assertion `left == right` failed: the app implements protocol version 1; a new version needs a reviewed client update
+  left: 2
+ right: 1
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- the_pinned_wire_surface_matches_the_reviewed_record stdout ----
+
+thread 'the_pinned_wire_surface_matches_the_reviewed_record' panicked at crates/gliff-client-core/tests/protocol_surface.rs:326:5:
+upstream wire surface differs from tests/compatibility/protocol-surface.json (5 change(s)):
+  surface.client_messages.FrameAck: "820682071903e8" -> "82068307f61903e8"
+  surface.client_messages.Hello: "8200830160858101190f0019087082010281676578616d706c65" -> "8200830260858101190f0019087082010281676578616d706c65"
+  surface.protocol_version: 1 -> 2
+  surface.server_messages.Error: "820983190100746e6f20487970726c616e6420696e7374616e636501" -> "820983190100746e6f20487970726c616e6420696e7374616e636502"
+  surface.server_messages.HelloAck: "8200840182f567676c6966662d3181846444502d31190a001905a01904e280" -> "8200840282f567676c6966662d3181846444502d31190a001905a01904e280"
+A changed protocol_version is a breaking upgrade: the client and every supported server must move together. A changed message encoding means upstream renumbered or retyped a field, or changed a required field: older servers will misread it. Review the range with docs/03-automate-upstream-sync-and-compatibility/upstream-update-workflow.md; if the change is compatible, rewrite the record with GLIFF_WRITE_PROTOCOL_SURFACE=1 and commit it with the pin.
+
+
+failures:
+    the_pinned_protocol_is_the_version_this_client_implements
+    the_pinned_wire_surface_matches_the_reviewed_record
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p gliff-client-core --test protocol_surface`
+[rust-tests] cargo test --workspace --locked
+   Compiling uniffi v0.29.4
+   Compiling gliff-mac-core v0.1.0 (<disposable>/app/crates/gliff-mac-core)
+   Compiling gliff-uniffi-bindgen v0.1.0 (<disposable>/app/tools/uniffi-bindgen)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 12.89s
+     Running unittests src/lib.rs (target/debug/deps/gliff_client_core-edd4ffed92d7c67f)
+
+running 3 tests
+test annexb::tests::rejects_streams_that_are_not_annex_b ... ok
+test annexb::tests::splits_three_and_four_byte_start_codes ... ok
+test annexb::tests::an_idr_without_parameter_sets_is_not_self_contained ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/mock_peer.rs (target/debug/deps/mock_peer-bc5a24cd8bfeb46b)
+
+running 2 tests
+test a_stream_joined_mid_gop_acks_and_requests_one_keyframe ... FAILED
+test a_full_session_replays_through_a_small_pipe ... FAILED
+
+failures:
+
+---- a_stream_joined_mid_gop_acks_and_requests_one_keyframe stdout ----
+
+thread 'a_stream_joined_mid_gop_acks_and_requests_one_keyframe' panicked at crates/gliff-client-core/tests/mock_peer.rs:81:23:
+Server version is too old (client protocol 2, server protocol 1)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- a_full_session_replays_through_a_small_pipe stdout ----
+
+thread 'a_full_session_replays_through_a_small_pipe' panicked at crates/gliff-client-core/tests/mock_peer.rs:81:23:
+Server version is too old (client protocol 2, server protocol 1)
+
+
+failures:
+    a_full_session_replays_through_a_small_pipe
+    a_stream_joined_mid_gop_acks_and_requests_one_keyframe
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p gliff-client-core --test mock_peer`
+
+Gate results (macOS 27.0.1, arm64, upstream cad820198a67):
+  structure              PASSED       
+  compatibility-records  PASSED       
+  protocol-surface       FAILED       `cargo test --locked -p gliff-client-core --test protocol_surface` exited with 101; log: build/gates/logs/protocol-surface.log
+  rust-tests             FAILED       `cargo test --workspace --locked` exited with 101; log: build/gates/logs/rust-tests.log
+2 passed, 2 failed, 0 unavailable. Summary: <disposable>/incompatible-gates.json
+[exit 1]
+upstream wire surface differs from tests/compatibility/protocol-surface.json (5 change(s)):
+  surface.client_messages.FrameAck: "820682071903e8" -> "82068307f61903e8"
+  surface.client_messages.Hello: "8200830160858101190f0019087082010281676578616d706c65" -> "8200830260858101190f0019087082010281676578616d706c65"
+  surface.protocol_version: 1 -> 2
+  surface.server_messages.Error: "820983190100746e6f20487970726c616e6420696e7374616e636501" -> "820983190100746e6f20487970726c616e6420696e7374616e636502"
+  surface.server_messages.HelloAck: "8200840182f567676c6966662d3181846444502d31190a001905a01904e280" -> "8200840282f567676c6966662d3181846444502d31190a001905a01904e280"
+A changed protocol_version is a breaking upgrade: the client and every supported server must move together. A changed message encoding means upstream renumbered or retyped a field, or changed a required field: older servers will misread it. Review the range with docs/03-automate-upstream-sync-and-compatibility/upstream-update-workflow.md; if the change is compatible, rewrite the record with GLIFF_WRITE_PROTOCOL_SURFACE=1 and commit it with the pin.
+
+
+failures:
+    the_pinned_protocol_is_the_version_this_client_implements
+    the_pinned_wire_surface_matches_the_reviewed_record
+
+$ python3 scripts/upstream.py qualify --gates <disposable>/incompatible-gates.json
+**Result: failed** — required gate(s) failed: protocol-surface, rust-tests
+
+| Gate | Required | Status | Platforms / reason |
+| --- | --- | --- | --- |
+| `structure` | yes | ✅ passed | macOS 27.0.1 arm64: passed |
+| `compatibility-records` | yes | ✅ passed | macOS 27.0.1 arm64: passed |
+| `protocol-surface` | yes | ❌ failed | macOS 27.0.1 arm64: failed — macOS 27.0.1 arm64: `cargo test --locked -p gliff-client-core --test protocol_surface` exited with 101; log: build/gates/logs/protocol-surface.log |
+| `rust-tests` | yes | ❌ failed | macOS 27.0.1 arm64: failed — macOS 27.0.1 arm64: `cargo test --workspace --locked` exited with 101; log: build/gates/logs/rust-tests.log |
+
+[exit 1]
+
+### 8. Rollback: revert the update commit and restore the submodule
+$ git revert --no-edit HEAD
+[feat/automate-upstream-sync b305159] Revert "Update upstream gliff to cad820198a67 (rehearsal)"
+ Date: Thu Oct 29 19:10:56 2026 +0100
+ 3 files changed, 3 insertions(+), 15 deletions(-)
+[exit 0]
+$ git submodule update --init --recursive
+Submodule path 'vendor/gliff': checked out '58c742452ded3f10a2ce61f60eb4845f18205e29'
+[exit 0]
+$ git -C vendor/gliff rev-parse HEAD
+58c742452ded3f10a2ce61f60eb4845f18205e29
+[exit 0]
+$ python3 scripts/gates.py --only structure,compatibility-records,protocol-surface,rust-tests --summary <disposable>/rollback-gates.json
+[structure] python3 scripts/check-structure.py
+[compatibility-records] python3 scripts/upstream.py check
+[protocol-surface] cargo test --locked -p gliff-client-core --test protocol_surface
+[rust-tests] cargo test --workspace --locked
+[rust-tests] cargo test --manifest-path tools/fixture-gen/Cargo.toml --locked
+
+Gate results (macOS 27.0.1, arm64, upstream 58c742452ded):
+  structure              PASSED       
+  compatibility-records  PASSED       
+  protocol-surface       PASSED       
+  rust-tests             PASSED       
+4 passed, 0 failed, 0 unavailable. Summary: <disposable>/rollback-gates.json
+[exit 0]
+
+### 9. Stale-pin rehearsal with --allow-stale, then abort
+$ python3 scripts/upstream.py update 089662fd59ebcedb047eea22fd983d66b4216d73 --allow-stale --report <disposable>/stale.md
+Staged upstream v0.4.1 -> v0.4.0 (stale). Lockfiles refreshed: Cargo.lock, tools/fixture-gen/Cargo.lock.
+Report: <disposable>/stale.md
+Next: scripts/check.sh, then record the gates; abort with scripts/upstream.py abort.
+[exit 0]
+candidate record: stale unqualified v0.4.0
+## Review flags
+
+- Crates in the app graph changed: Rust API review for the adapter.
+- **Candidate is stale relative to the pin**: not an upgrade.
+
+## Changes by review area
+$ python3 scripts/upstream.py abort
+Restored the committed pin 58c742452ded3f10a2ce61f60eb4845f18205e29 (v0.4.1).
+[exit 0]
+$ git status --porcelain
+[exit 0]
+work dir: <disposable>

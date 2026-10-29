@@ -1,0 +1,61 @@
+{
+  "gate": "live-host",
+  "status": "passed",
+  "reason": null,
+  "date": "2026-10-29T18:08:53Z",
+  "client": {
+    "source_sha": "8d151d3df166e406bbd3f017cc4159f60fa69dde",
+    "dirty": false,
+    "os": "Darwin 27.0.1",
+    "arch": "arm64",
+    "recorder": "tools/fixture-gen record (minimal Hello/Pong/FrameAck client over the app contract)"
+  },
+  "server": {
+    "host": "omarchy-mbp.local",
+    "source_sha": "58c742452ded3f10a2ce61f60eb4845f18205e29",
+    "lockfile_sha256": "0dfd5f89b00821d8e5235cf52b39746aa66b0d3160b8ca648a04c89adaf2584b",
+    "version": "gliff-server 0.4.1",
+    "kernel": "Linux 7.2.11-arch1-Watanare-T2-1-t2 x86_64",
+    "os": "Omarchy",
+    "hyprland": "0.56.2",
+    "arguments": [
+      "--stdio",
+      "--headless",
+      "--video",
+      "cpu"
+    ]
+  },
+  "session": {
+    "chroma": "single420",
+    "frames_requested": 4,
+    "client_resize": "1280x800",
+    "frames_recorded": 4,
+    "frames_decoded": 4,
+    "messages": [
+      "HelloAck",
+      "Ping",
+      "StreamConfig",
+      "CursorShape",
+      "..."
+    ],
+    "configs": [
+      {
+        "codec": "H264",
+        "chroma": "Single420",
+        "pipeline": "cpu",
+        "width": 1920,
+        "height": 1080,
+        "fps_cap": 30
+      },
+      {
+        "codec": "H264",
+        "chroma": "Single420",
+        "pipeline": "cpu",
+        "width": 1280,
+        "height": 800,
+        "fps_cap": 30
+      }
+    ],
+    "stream_sha256": "24232b698f193189819eb90ea973f4047939a98ac576d07f91cc94d74a284346"
+  }
+}
