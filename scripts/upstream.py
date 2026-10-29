@@ -327,7 +327,7 @@ def merge_gates(gate_files, live_files):
             entry["platforms"][where] = gate["status"]
             if gate["status"] == "failed":
                 entry["status"] = "failed"
-                entry["reason"] = "{}: {}".format(where, gate.get("reason"))
+                entry["reason"] = gate.get("reason")
             elif gate["status"] == "passed" and entry["status"] != "failed":
                 entry["status"] = "passed"
                 entry.pop("reason", None)
