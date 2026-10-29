@@ -53,16 +53,14 @@ normal decode failure still uses ordered ack/keyframe recovery.
 - `python3 scripts/gates.py --only structure,whitespace,ssh-session`: three passed.
   The new SSH gate explicitly covers process/mock behavior, not live acceptance.
 
-## Remaining acceptance
+## Validation limits
 
-No remote commands or captures were run in this child. Parent must run the public
-headless `ssh_probe` example documented in development.md against the pinned server,
-verify configuration/frames, pong/ack counters and repeated stop/quit cleanup, then
-exercise LaunchServices/Finder with its actual environment. The probe synthetically
-reports completion and is not decoder evidence. Full check.sh, Xcode app validation,
-Intel runtime and independent final review remain with the parent. No physical
-monitor capture is authorized. Host-key/auth classifications have deterministic
-unit coverage; actual host failure scenarios still require live acceptance.
+The probes synthetically report decode completion; actual VideoToolbox decoding
+remains task 07. Intel runtime and additional agent/ProxyJump configurations are
+not covered on this Apple Silicon machine. Host-key/auth classifications have
+deterministic unit coverage; destructive changes to real known_hosts were not
+used for fault injection. Independent review and current-source CI results are
+recorded on the pull request.
 
 ## Integration corrections
 
@@ -92,3 +90,12 @@ The first short 5/10-second probes stopped before startup completed on this
 network. Thirty-second probes are used for acceptance, while the implementation
 still bounds startup at 20 seconds. A direct server preflight with stdin closed
 correctly reported `read Hello: connection closed`.
+
+Two further sequential connect/stop cycles delivered and acknowledged 63 and 54
+frames respectively, with one pong each, and closed after cancellation. The
+metadata is in [evidence/repeated-transport.json](evidence/repeated-transport.json).
+The initial full check ran every local gate: 15 passed and only the stale
+compatibility record failed. The record was refreshed against clean source
+`315b474` with the new SSH gate; qualification awaits current-source CI/live
+evidence. The implementation and regression tests total 46 passing Rust tests;
+Swift tests, both Apple targets, universal bridge and Xcode app passed.
