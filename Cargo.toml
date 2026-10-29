@@ -31,3 +31,9 @@ unsafe_op_in_unsafe_fn = "deny"
 
 [workspace.lints.clippy]
 undocumented_unsafe_blocks = "warn"
+
+# Release builds strip host proc-macro dylibs by default; Xcode 27's strip also
+# removes the rustc metadata they need ("can't find crate for tokio_macros").
+# Keep build scripts and proc macros unstripped; shipped artifacts are unaffected.
+[profile.release.build-override]
+strip = "none"
