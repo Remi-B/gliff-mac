@@ -1,7 +1,7 @@
 # Gliff macOS implementation plan
 
-Status: task 01 complete; task 02 in review (live captures pending); tasks 03–13 planned.
-Updated on 2026-10-28.
+Status: task 01 complete; task 02 in review (live captures pending); task 03 in review; tasks 04–13 planned.
+Updated on 2026-10-29.
 
 Planning location: this specification/plan/task collection is versioned under
 `docs/`, alongside the application build/development documentation.
@@ -99,14 +99,14 @@ as the initial baseline, then validate each subsequent pin explicitly.
 ## Ordered tasks
 
 Each task has scope, dependencies, deliverables, and acceptance criteria in its
-folder. Task 01 is **complete**, including local macOS build validation; task 02 is **in review**; the remaining tasks are **planned**. The order prioritizes repository ownership,
+folder. Task 01 is **complete**, including local macOS build validation; tasks 02 and 03 are **in review**; the remaining tasks are **planned**. The order prioritizes repository ownership,
 compatibility, and build risks before UI breadth.
 
 | # | Task | Depends on | Completion evidence |
 | --- | --- | --- | --- |
 | 01 | [setup-project-structure](01-setup-project-structure/README.md) | — | Fresh app history; pinned submodule; local fork backup; bootstrap/checks and universal Xcode build passed in the macOS VM |
 | 02 | [audit-upstream-protocol-and-portability](02-audit-upstream-protocol-and-portability/README.md) | 01 | Real contract fixtures; selected crates compile on macOS; platform boundary verified — **in review**: boundary, contract and server-equivalent fixtures done; live captures pending |
-| 03 | [automate-upstream-sync-and-compatibility](03-automate-upstream-sync-and-compatibility/README.md) | 02 | Repeatable upstream bump/revert and compatibility CI; later gates added as implemented |
+| 03 | [automate-upstream-sync-and-compatibility](03-automate-upstream-sync-and-compatibility/README.md) | 02 | Repeatable upstream bump/revert and compatibility CI; later gates added as implemented — **in review**: tooling, gates, CI, records and live-host check done; bump/rollback rehearsed |
 | 04 | [build-rust-swift-bridge](04-build-rust-swift-bridge/README.md) | 02 | Repeatable bindings/XCFramework and Swift import/callback smoke test |
 | 05 | [implement-ssh-session](05-implement-ssh-session/README.md) | 03, 04 | Authenticated handshake, bounded video delivery, acknowledgments and clean cancellation |
 | 06 | [create-native-macos-app](06-create-native-macos-app/README.md) | 04 | Native app shell; typed session UI; deterministic Xcode build |

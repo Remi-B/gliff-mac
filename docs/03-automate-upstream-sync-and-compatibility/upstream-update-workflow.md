@@ -1,7 +1,29 @@
 # Upstream update and rollback runbook
 
-Status: proposed procedure for task 03; named scripts/records below are deliverables,
-not commands/files already implemented in this documentation change.
+Status: implemented by task 03. Commands: `scripts/upstream.py` (status, update,
+abort, report, check, record, qualify, cache-key), `scripts/check.sh` /
+`scripts/gates.py` (gates), `scripts/live-host-check.sh` (live host) and the
+`Upstream candidate` workflow. Records: [`tests/compatibility/`](../../tests/compatibility/README.md).
+
+## Quick reference
+
+```bash
+python3 scripts/upstream.py status                 # pin vs upstream main, no change
+python3 scripts/upstream.py update <full-sha>      # stage gitlink + revision + locks + candidate
+scripts/check.sh                                   # every gate this host can run
+scripts/live-host-check.sh <linux-host>            # live server evidence (CPU Single420)
+scripts/live-host-check.sh <linux-host> --video gpu --chroma dual420
+python3 scripts/upstream.py record current-pin --gates build/gates/*.json \
+  --live-evidence build/live/<run>/evidence.json   # after committing the update
+python3 scripts/upstream.py abort                  # drop a staged, uncommitted candidate
+git revert <update-commit> && git submodule update --init --recursive   # rollback
+```
+
+`update` refuses an abbreviated SHA, a branch or tag name, a dirty parent or vendor
+checkout, a commit that is not on upstream `main` or a release tag, and a candidate that
+is older than or diverged from the pin (`--allow-stale` exists only to rehearse such a
+pin in a disposable branch; its record says `stale`/`diverged`). A candidate equal to the
+pin is a rehearsal: it writes the report and stages nothing.
 
 ## Normal checkout and source ownership
 
@@ -43,6 +65,28 @@ to make a build pass without recording the source change.
 7. Update `tests/compatibility/` with exact versions, test evidence and unsupported
    cases. Publish the focused update report for review. Merge only when implemented
    required gates pass and any changed behavior is reflected in release notes.
+
+Steps 1, 3, 4 (lockfile synchronisation) and the candidate record are what
+`scripts/upstream.py update` automates; it writes the step-2 range report to
+`build/upstream/`. A changed wire surface fails the `protocol-surface` gate with the
+affected messages; rewrite `tests/compatibility/protocol-surface.json`
+(`GLIFF_WRITE_PROTOCOL_SURFACE=1 cargo test -p gliff-client-core --test protocol_surface`)
+only after reviewing that the change is compatible.
+
+## Live host
+
+`scripts/live-host-check.sh HOST [--sha SHA]` sends the exact upstream commit to the
+host as a Git bundle, builds the unmodified `gliff-server` there with upstream's own
+lockfile (installing a private Rust 1.90.0 under `~/.cache/gliff-mac-live` if the host
+has no Cargo), then records a real `--stdio --headless` session from the Mac with the
+contract recorder: `Hello`, `Pong`, a `FrameAck` per decoded frame, a client `Resize`
+after the first frame and `Bye`. It replays the bytes through the app's client
+contract and upstream's reference decoder, and writes `evidence.json`, the stream,
+its manifest and decoded PNGs under `build/live/`. It needs key/agent SSH access to a
+user with an active Hyprland session; nothing is installed system-wide and the
+headless output never shows a physical monitor. Hosted CI cannot run it, so the
+`live-host` gate is unavailable there and a candidate stays unqualified until a
+maintainer adds the evidence.
 
 Daily checks discover candidates; manual invocation can start immediately after
 an upstream fix. Keep one active candidate update per base branch. Do not schedule

@@ -1,6 +1,9 @@
 # 03 — automate-upstream-sync-and-compatibility
 
-Status: planned. Dependencies: [02](../02-audit-upstream-protocol-and-portability/README.md).
+Status: in review — tooling, gates, CI, records and live-host workflow implemented; update/rollback rehearsed. Dependencies: [02](../02-audit-upstream-protocol-and-portability/README.md).
+
+Results: [update runbook](upstream-update-workflow.md), [compatibility records](../../tests/compatibility/README.md),
+[implementation record](implementation-record.md).
 
 ## Outcome
 
@@ -10,25 +13,27 @@ available rather than postponing integration infrastructure until release.
 
 ## Work
 
-- [ ] Implement bootstrap and update/check scripts following the
+- [x] Implement bootstrap and update/check scripts following the
   [update runbook](upstream-update-workflow.md). Require an explicit candidate SHA;
   normal builds never advance the pin. Check clean submodule state and synchronized
   lockfile/provenance records.
-- [ ] Add a daily upstream-change check and a manual exact-SHA update workflow.
+- [x] Add a daily upstream-change check and a manual exact-SHA update workflow.
   Avoid duplicate active update branches/PRs. Generate a focused report for changed
   protocol, transport, session, input, clipboard and colour-reference paths.
-- [ ] Run parent Rust formatting/lint/unit/replay checks, native macOS compilation
+- [x] Run parent Rust formatting/lint/unit/replay checks, native macOS compilation
   for both targets, and the task-02 contract fixtures. Keep upstream Linux checks
   in a separate job using upstream's own workspace/lockfile and required environment.
-- [ ] Maintain `tests/compatibility/` records for the initial supported release,
+- [x] Maintain `tests/compatibility/` records for the initial supported release,
   current pin and candidate. Record client source SHA, server source SHA, both
   dependency lockfiles, protocol/features, architecture, OS, test result and date.
 - [ ] Add bridge import checks at task 04, real session/replay checks at 05,
   video/Metal checks at 07–08, input/clipboard checks at 09–11, and full acceptance
   gates at 12. Required checks must distinguish passed, failed and unavailable.
-- [ ] Provision or document the Linux/Hyprland host workflow for live tests. Hosted
+  *(Done for the mechanism: each later gate is registered in `scripts/gates.py` as
+  unavailable/planned; the owning task implements and marks it required.)*
+- [x] Provision or document the Linux/Hyprland host workflow for live tests. Hosted
   macOS CI and mock peers cannot prove compositor or GPU interoperability.
-- [ ] Make cache keys include upstream SHA, parent lockfile, Rust/UniFFI versions,
+- [x] Make cache keys include upstream SHA, parent lockfile, Rust/UniFFI versions,
   Xcode version and target. Rebuild after a pin change; do not reuse stale bindings.
 
 ## Deliverables and acceptance
