@@ -69,6 +69,20 @@ Update/rollback rehearsal in a disposable clone ([script](evidence/rehearsal.sh)
 6. `git revert` of the update commit plus `git submodule update` restores the pin and
    passing gates.
 
+## Independent review and qualified record
+
+GPT Sol's review of #4 found three issues, all fixed: qualification now requires every
+gate `gates.py` declares required even when a summary omits it; `record` refuses
+evidence from dirty trees or from commits whose sources differ from HEAD (records and
+docs excepted); and a live check fails when the server negotiates another video
+pipeline than the one requested.
+
+The current-pin and initial-release records (both v0.4.1) are **qualified** from
+commit `d8ceca4`: this Mac (macOS 27.0.1, Xcode 27.1), the CI `push` run on macOS 15.7 /
+Xcode 16.4 and Ubuntu, the upstream workspace in Arch, and both live runs above. CI
+`pull_request` runs test a merge commit outside the branch history, so records use the
+`push` run's summaries.
+
 ## Limits and follow-ups
 
 - The scheduled/manual workflow can only run from the default branch; on this pull

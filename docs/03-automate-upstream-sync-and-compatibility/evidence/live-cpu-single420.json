@@ -2,9 +2,9 @@
   "gate": "live-host",
   "status": "passed",
   "reason": null,
-  "date": "2026-10-29T18:08:53Z",
+  "date": "2026-10-29T18:19:49Z",
   "client": {
-    "source_sha": "8d151d3df166e406bbd3f017cc4159f60fa69dde",
+    "source_sha": "d8ceca48efabc53bf5304722f4ad049ff5a038dc",
     "dirty": false,
     "os": "Darwin 27.0.1",
     "arch": "arm64",
@@ -56,6 +56,6 @@
         "fps_cap": 30
       }
     ],
-    "stream_sha256": "24232b698f193189819eb90ea973f4047939a98ac576d07f91cc94d74a284346"
+    "stream_sha256": "d71b445b7fd717686028aec0e11476d46efacb473759df1ad144dafc5704d98a"
   }
 }
