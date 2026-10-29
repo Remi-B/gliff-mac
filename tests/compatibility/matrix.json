@@ -193,9 +193,9 @@
     },
     "current-pin": {
       "role": "current-pin",
-      "result": "qualified",
-      "reason": "every required gate passed; human review decides the merge",
-      "date": "2026-10-29T19:56:24Z",
+      "result": "unqualified",
+      "reason": "required gate(s) unavailable: upstream-linux, live-host",
+      "date": "2026-10-29T21:45:40Z",
       "upstream": {
         "sha": "58c742452ded3f10a2ce61f60eb4845f18205e29",
         "describe": "v0.4.1",
@@ -203,7 +203,7 @@
       },
       "client": {
         "source_shas": [
-          "1dc01597576b04c592e0b7cdb15f05affebf4461"
+          "315b47494554ad976b80249778d1470fb0bbbb32"
         ],
         "dirty": false,
         "lockfile_sha256": "eceba4df1ea44221d65a51198512071551c137a58aeaa09c27434c4a2d0f7db9"
@@ -219,133 +219,10 @@
           "arch": "arm64",
           "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)",
           "xcode": "Xcode 27.1",
-          "date": "2026-10-29T19:48:54Z"
-        },
-        {
-          "os": "macOS 15.7.9",
-          "arch": "arm64",
-          "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)",
-          "xcode": "Xcode 16.4",
-          "date": "2026-10-29T19:49:14Z"
-        },
-        {
-          "os": "Linux 7.0.0-1017-azure",
-          "arch": "x86_64",
-          "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)",
-          "xcode": null,
-          "date": "2026-10-29T19:49:06Z"
-        },
-        {
-          "os": "Linux 7.0.0-1017-azure",
-          "arch": "x86_64",
-          "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13) (Arch Linux rust 1:1.99.1-1)",
-          "xcode": null,
-          "date": "2026-10-29T19:49:36Z"
+          "date": "2026-10-29T21:44:30Z"
         }
       ],
-      "servers": [
-        {
-          "host": "omarchy-mbp.local",
-          "source_sha": "58c742452ded3f10a2ce61f60eb4845f18205e29",
-          "lockfile_sha256": "0dfd5f89b00821d8e5235cf52b39746aa66b0d3160b8ca648a04c89adaf2584b",
-          "version": "gliff-server 0.4.1",
-          "kernel": "Linux 7.2.11-arch1-Watanare-T2-1-t2 x86_64",
-          "os": "Omarchy",
-          "hyprland": "0.56.2",
-          "arguments": [
-            "--stdio",
-            "--headless",
-            "--video",
-            "cpu"
-          ],
-          "date": "2026-10-29T19:50:04Z",
-          "status": "passed",
-          "session": {
-            "chroma": "single420",
-            "frames_requested": 4,
-            "client_resize": "1280x800",
-            "frames_recorded": 4,
-            "frames_decoded": 4,
-            "messages": [
-              "HelloAck",
-              "Ping",
-              "StreamConfig",
-              "CursorShape",
-              "..."
-            ],
-            "configs": [
-              {
-                "codec": "H264",
-                "chroma": "Single420",
-                "pipeline": "cpu",
-                "width": 1920,
-                "height": 1080,
-                "fps_cap": 30
-              },
-              {
-                "codec": "H264",
-                "chroma": "Single420",
-                "pipeline": "cpu",
-                "width": 1280,
-                "height": 800,
-                "fps_cap": 30
-              }
-            ],
-            "stream_sha256": "74395b806f78501de4986feda3d0959afd5a1d2ea426c76a3af66d5fa7929b16"
-          }
-        },
-        {
-          "host": "omarchy-mbp.local",
-          "source_sha": "58c742452ded3f10a2ce61f60eb4845f18205e29",
-          "lockfile_sha256": "0dfd5f89b00821d8e5235cf52b39746aa66b0d3160b8ca648a04c89adaf2584b",
-          "version": "gliff-server 0.4.1",
-          "kernel": "Linux 7.2.11-arch1-Watanare-T2-1-t2 x86_64",
-          "os": "Omarchy",
-          "hyprland": "0.56.2",
-          "arguments": [
-            "--stdio",
-            "--headless",
-            "--video",
-            "gpu",
-            "--full-chroma"
-          ],
-          "date": "2026-10-29T19:50:48Z",
-          "status": "passed",
-          "session": {
-            "chroma": "dual420",
-            "frames_requested": 4,
-            "client_resize": "1280x800",
-            "frames_recorded": 4,
-            "frames_decoded": 4,
-            "messages": [
-              "HelloAck",
-              "Ping",
-              "StreamConfig",
-              "CursorShape",
-              "..."
-            ],
-            "configs": [
-              {
-                "codec": "H264",
-                "chroma": "Dual420",
-                "pipeline": "gpu",
-                "width": 1920,
-                "height": 1080,
-                "fps_cap": 30
-              },
-              {
-                "codec": "H264",
-                "chroma": "Dual420",
-                "pipeline": "gpu",
-                "width": 1280,
-                "height": 800,
-                "fps_cap": 30
-              }
-            ],
-            "stream_sha256": "290b7ec0b1cb4b7a23ccf6737f4dc5bb6218d35221f652ea83e2460b9e68653f"
-          }
-        }
-      ],
+      "servers": [],
       "gates": {
         "structure": "passed",
         "compatibility-records": "passed",
@@ -362,9 +239,9 @@
         "swift-package": "passed",
         "bridge-import": "passed",
         "macos-app": "passed",
-        "upstream-linux": "passed",
-        "live-host": "passed",
-        "ssh-session": "unavailable",
+        "upstream-linux": "unavailable",
+        "live-host": "unavailable",
+        "ssh-session": "passed",
         "video-decode": "unavailable",
         "metal-chroma": "unavailable",
         "remote-input": "unavailable",
@@ -386,6 +263,7 @@
         "rust-format",
         "rust-lint",
         "rust-tests",
+        "ssh-session",
         "structure",
         "swift-package",
         "upstream-linux",
