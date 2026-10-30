@@ -112,6 +112,7 @@ fn invalid_targets_and_options_are_typed_errors() {
         server_path: None,
         identity_file: None,
         headless: false,
+        video_mode: VideoMode::Auto,
     };
     let single = options(vec![ChromaMode::Single420]);
     for target in [
@@ -161,6 +162,7 @@ fn remote_home_paths_are_rejected_with_setup_guidance() {
         server_path: Some("~/bin/gliff-server".into()),
         identity_file: None,
         headless: true,
+        video_mode: VideoMode::Auto,
     };
     assert!(matches!(
         GliffSession::new(target, options(vec![ChromaMode::Single420])),

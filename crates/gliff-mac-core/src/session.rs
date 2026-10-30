@@ -294,6 +294,7 @@ mod tests {
             server_path: None,
             identity_file: None,
             headless: true,
+            video_mode: VideoMode::Auto,
         };
         for chroma in [
             vec![ChromaMode::Dual420, ChromaMode::Single420],

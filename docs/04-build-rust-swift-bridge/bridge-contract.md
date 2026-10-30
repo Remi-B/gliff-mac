@@ -43,7 +43,7 @@ flowchart LR
 | Item | Role |
 | --- | --- |
 | `GliffSession(target:options:)` | Validates and builds; nothing runs. Typed `GliffError.InvalidOptions` |
-| `ConnectionTarget.ssh(host:user:port:serverPath:identityFile:headless:)` | Restricted host/user syntax, nonzero port, literal remote executable (no leading `~`) and optional absolute identity path; starts system OpenSSH with strict verification and batch authentication |
+| `ConnectionTarget.ssh(host:user:port:serverPath:identityFile:headless:videoMode:)` | `VideoMode` is a closed enum: `.auto` adds no flag, `.cpu`/`.gpu` add `--video cpu`/`--video gpu` (the pinned server rejects `--video auto`). Restricted host/user syntax, nonzero port, literal remote executable (no leading `~`) and optional absolute identity path; starts system OpenSSH with strict verification and batch authentication |
 | `ConnectionTarget.replay(stream:)` | A recorded `.gliffstream`, for tests and diagnostics; client messages are counted, not sent |
 | `SessionOptions` | Decoder chroma modes advertised to the server, preferred first (SSH and replay alike since task 08; the app sends `[Dual420, Single420]`), keymap, in-flight budget (default 4 frames, 8 MiB) |
 | `start(delegate:)` | Once; `AlreadyStarted` afterwards. A refused start keeps no delegate |

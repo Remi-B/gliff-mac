@@ -18,12 +18,12 @@ import Testing
         let options = SessionOptions(chroma: [.single420])
         for host in ["", "-oProxyCommand=touch /tmp/x", "host name"] {
             #expect(throws: GliffError.self) {
-                _ = try GliffSession(target: .ssh(host: host, user: nil, port: nil, serverPath: nil, identityFile: nil, headless: true),
+                _ = try GliffSession(target: .ssh(host: host, user: nil, port: nil, serverPath: nil, identityFile: nil, headless: true, videoMode: .auto),
                                      options: options)
             }
         }
         do {
-            _ = try GliffSession(target: .ssh(host: "host", user: nil, port: 0, serverPath: nil, identityFile: nil, headless: true),
+            _ = try GliffSession(target: .ssh(host: "host", user: nil, port: 0, serverPath: nil, identityFile: nil, headless: true, videoMode: .auto),
                                  options: options)
             Issue.record("port 0 was accepted")
         } catch let GliffError.InvalidOptions(message) {
@@ -39,7 +39,7 @@ import Testing
 
     @Test func sshCancelledBeforeStartupEndsWithoutConnecting() async throws {
         let session = try GliffSession(target: .ssh(host: "example", user: nil, port: nil,
-            serverPath: nil, identityFile: nil, headless: true), options: SessionOptions(chroma: [.single420]))
+            serverPath: nil, identityFile: nil, headless: true, videoMode: .auto), options: SessionOptions(chroma: [.single420]))
         session.cancel()
         let recorder = Recorder()
         try session.start(delegate: recorder)

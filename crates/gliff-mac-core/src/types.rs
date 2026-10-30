@@ -19,10 +19,36 @@ pub enum ConnectionTarget {
         server_path: Option<String>,
         identity_file: Option<String>,
         headless: bool,
+        video_mode: VideoMode,
     },
     /// A recorded server-to-client stream (a `.gliffstream` fixture). Client
     /// messages are counted, not sent. For tests and diagnostics.
     Replay { stream: Vec<u8> },
+}
+
+/// The server's `--video` choice. A closed enum: the remote command is built
+/// from these fixed spellings, never from caller text.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, uniffi::Enum)]
+pub enum VideoMode {
+    /// The server chooses from `GLIFF_VIDEO`, else GPU with CPU fallback.
+    #[default]
+    Auto,
+    /// `--video cpu`
+    Cpu,
+    /// `--video gpu`
+    Gpu,
+}
+
+impl VideoMode {
+    /// Preserve Auto's prior behavior by omitting `--video`; the bundled
+    /// server also accepts explicit `--video auto` for other callers.
+    pub(crate) fn flag(self) -> Option<&'static str> {
+        match self {
+            Self::Auto => None,
+            Self::Cpu => Some("cpu"),
+            Self::Gpu => Some("gpu"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]

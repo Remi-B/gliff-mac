@@ -256,7 +256,8 @@ behaviour in a Finder-launched app; signing and notarization are task 13.
 ## GUI SSH transport and headless probe
 
 `ConnectionTarget.ssh` takes host/config alias, optional user/port/server path,
-optional absolute identity file and a headless Boolean. It invokes `/usr/bin/ssh`
+optional absolute identity file, a headless Boolean and a `VideoMode` enum
+(`auto` omits `--video`; `cpu`/`gpu` pass the two values the pinned server accepts). It invokes `/usr/bin/ssh`
 with local argv, strict known-host verification, batch key/agent authentication,
 no TTY and no forwarding/control socket. Existing SSH config aliases, identities,
 agent and ProxyJump still apply. The remote executable is shell quoted and options

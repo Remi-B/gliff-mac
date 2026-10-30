@@ -19,6 +19,8 @@ struct ConnectionRequest: Codable, Equatable, Hashable, Sendable {
     var serverPath = ""
     /// Ask the server for a virtual display instead of mirroring an output.
     var headless = true
+    /// Server-side encoder. Auto omits `--video` (the server decides); CPU and GPU pass it.
+    var videoMode: ServerVideoMode = .auto
 
     enum Field: String, CaseIterable, Sendable {
         case host, user, port, identityFile, serverPath
@@ -76,7 +78,8 @@ struct ConnectionRequest: Codable, Equatable, Hashable, Sendable {
             port: nonEmpty(port).flatMap(UInt16.init),
             serverPath: nonEmpty(serverPath),
             identityFile: nonEmpty(identityFile),
-            headless: headless)
+            headless: headless,
+            videoMode: videoMode.bridgeValue)
     }
 
     /// `user@host:port`, for titles and the recent hosts list.
@@ -91,7 +94,12 @@ struct ConnectionRequest: Codable, Equatable, Hashable, Sendable {
     var normalized: ConnectionRequest {
         ConnectionRequest(
             host: trimmed(host), user: trimmed(user), port: trimmed(port),
-            identityFile: trimmed(identityFile), serverPath: trimmed(serverPath), headless: headless)
+            identityFile: trimmed(identityFile), serverPath: trimmed(serverPath), headless: headless,
+            videoMode: videoMode)
+    }
+
+    fileprivate enum CodingKeys: String, CodingKey {
+        case host, user, port, identityFile, serverPath, headless, videoMode
     }
 
     private static let hostCharacters = CharacterSet(
@@ -101,6 +109,40 @@ struct ConnectionRequest: Codable, Equatable, Hashable, Sendable {
 
     private static func isControl(_ scalar: Unicode.Scalar) -> Bool {
         scalar.properties.generalCategory == .control
+    }
+}
+
+/// Older saved entries have no `videoMode`; they decode as Auto, the previous
+/// behaviour. Declared in an extension to keep the memberwise initializer.
+extension ConnectionRequest {
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        host = try values.decode(String.self, forKey: .host)
+        user = try values.decode(String.self, forKey: .user)
+        port = try values.decode(String.self, forKey: .port)
+        identityFile = try values.decode(String.self, forKey: .identityFile)
+        serverPath = try values.decode(String.self, forKey: .serverPath)
+        headless = try values.decode(Bool.self, forKey: .headless)
+        videoMode = try values.decodeIfPresent(ServerVideoMode.self, forKey: .videoMode) ?? .auto
+    }
+}
+
+enum ServerVideoMode: String, Codable, CaseIterable, Identifiable, Sendable {
+    case auto, cpu, gpu
+    var id: Self { self }
+    var bridgeValue: GliffCore.VideoMode {
+        switch self {
+        case .auto: .auto
+        case .cpu: .cpu
+        case .gpu: .gpu
+        }
+    }
+    var label: String {
+        switch self {
+        case .auto: "Auto"
+        case .cpu: "CPU"
+        case .gpu: "GPU"
+        }
     }
 }
 

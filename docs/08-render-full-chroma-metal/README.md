@@ -52,3 +52,21 @@ a Dual420 frame when both callbacks arrive, or fails it when either stream
 fails or a partner expires. Metal reconstructs full chroma before aspect-fit
 presentation. The implementation record distinguishes fixture checks, GPU
 native live acceptance and the unresolved CPU server compatibility failure.
+## Integration with the video encoder selector
+
+The connection form lets the user pick Auto, CPU or GPU
+(`ConnectionRequest.videoMode`, bridge `VideoMode`). It only changes the server
+`--video` flag; it does not change what the client advertises. `LiveSession.chroma`
+and the `videoMode:` argument of `ConnectionTarget.ssh` remain independent.
+Use the Auto/GPU path to validate Dual420.
+
+## Separate follow-up: CPU Dual420 compatibility
+
+CPU Dual420 compatibility is not established by this task or by the selectable
+encoder option. The pinned server can mark the main stream as a keyframe while
+the auxiliary stream lacks SPS/PPS. The current client contract requires each
+stream's keyframe parameter sets and correctly rejects that frame. Track any
+compatibility change separately from encoder-performance work: first agree on
+the protocol meaning and safe decoder recovery, then measure CPU cost and
+optimize. Do not relax the contract or claim CPU Dual420 support as part of the
+encoder selector.

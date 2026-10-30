@@ -8,19 +8,31 @@ import Testing
         let request = ConnectionRequest(host: " desk ", user: " ", port: "", identityFile: "", serverPath: "")
         #expect(request.validationErrors().isEmpty)
         #expect(request.target() == .ssh(host: "desk", user: nil, port: nil, serverPath: nil,
-                                         identityFile: nil, headless: true))
+                                         identityFile: nil, headless: true, videoMode: .auto))
         #expect(request.displayName == "desk")
     }
 
     @Test func everyFieldIsPassedStructured() {
         let request = ConnectionRequest(host: "10.0.0.2", user: "remi", port: "2222",
                                         identityFile: "/Users/remi/.ssh/id_ed25519",
-                                        serverPath: "/opt/gliff/bin/gliff-server", headless: false)
+                                        serverPath: "/opt/gliff/bin/gliff-server", headless: false,
+                                        videoMode: .gpu)
         #expect(request.validationErrors().isEmpty)
         #expect(request.target() == .ssh(host: "10.0.0.2", user: "remi", port: 2222,
                                          serverPath: "/opt/gliff/bin/gliff-server",
-                                         identityFile: "/Users/remi/.ssh/id_ed25519", headless: false))
+                                         identityFile: "/Users/remi/.ssh/id_ed25519", headless: false,
+                                         videoMode: .gpu))
         #expect(request.displayName == "remi@10.0.0.2:2222")
+    }
+
+    @Test(arguments: ServerVideoMode.allCases)
+    func selectedEncoderModeReachesBridge(mode: ServerVideoMode) {
+        let target = ConnectionRequest(host: "desk", videoMode: mode).target()
+        guard case let .ssh(_, _, _, _, _, _, videoMode) = target else {
+            Issue.record("connection request did not produce an SSH target")
+            return
+        }
+        #expect(videoMode == mode.bridgeValue)
     }
 
     @Test(arguments: [
@@ -49,7 +61,7 @@ import Testing
     func formValidationMatchesTheBridge(host: String) {
         let request = ConnectionRequest(host: host)
         let bridgeAccepts = (try? GliffSession(target: .ssh(host: host, user: nil, port: nil, serverPath: nil,
-                                                            identityFile: nil, headless: true),
+                                                            identityFile: nil, headless: true, videoMode: .auto),
                                                options: SessionOptions(chroma: [.single420]))) != nil
         #expect(request.validationErrors().isEmpty == bridgeAccepts)
     }
@@ -107,7 +119,16 @@ import Testing
         recents.remember(ConnectionRequest(host: "a", user: "u", port: "22", identityFile: "/k", serverPath: "s"))
         let data = try #require(defaults.store.data(forKey: RecentConnections.entriesKey))
         let stored = try #require(try JSONSerialization.jsonObject(with: data) as? [[String: Any]])
-        #expect(Set(stored[0].keys) == ["host", "user", "port", "identityFile", "serverPath", "headless"])
+        #expect(Set(stored[0].keys) == ["host", "user", "port", "identityFile", "serverPath", "headless", "videoMode"])
+    }
+
+    @Test func oldRecentEntriesDefaultToAutoAndModePersists() throws {
+        let old = #"[{"host":"desk","user":"","port":"","identityFile":"","serverPath":"","headless":true}]"#
+        defaults.store.set(Data(old.utf8), forKey: RecentConnections.entriesKey)
+        let recents = RecentConnections(defaults: defaults.store)
+        #expect(recents.entries.first?.videoMode == .auto)
+        recents.remember(ConnectionRequest(host: "gpu", videoMode: .gpu))
+        #expect(RecentConnections(defaults: defaults.store).entries.first?.videoMode == .gpu)
     }
 }
 
