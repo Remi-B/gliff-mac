@@ -132,7 +132,7 @@ Local platform: macOS 27.0.1 arm64, Apple M4 Pro, Xcode 27.1, Rust 1.90.0.
 | Cursor | `RemoteCursorTests`, surface/controller tests: BGRA shape/hotspot scaling, position/visibility/shape IDs, no overlay during capture, clearing on teardown |
 | Real keymap compilation | `scripts/export-keyboard-layouts.sh`, `scripts/check-keyboard-layouts.py`: Apple translation data vs Linux libxkbcommon for all four sources and ANSI/ISO data: 1,568 symbol comparisons, 46 dead-accent Compose checks, zero differences; [evidence](evidence/layout-symbols-and-compose.json) |
 | Native bridge to Hyprland | Headless smoke below; actual text and dead-key composition asserted |
-| Gates/CI | Full gate run and CI recorded on the PR; compatibility qualification is refreshed from clean-source evidence |
+| Gates/CI | Clean source `97e074f`: 18 passed, one stale compatibility-record failure, six unavailable. Refreshed current-pin is explicitly unqualified pending upstream Linux and clean-source live-host evidence; its consistency check passes. CI state is recorded on the PR |
 
 ### Headless native input smoke
 
@@ -166,6 +166,13 @@ scripts/export-keyboard-layouts.sh
 python3 scripts/check-keyboard-layouts.py build/input-layouts/layouts.json \
   --ssh remi@omarchy-mbp.local --identity ~/.ssh/id_ed25519_omarchy
 ```
+
+Local UI check: the app was opened through native UI automation, Settings was
+inspected with its hierarchy and screenshot, and closed normally. The capture
+preference, Shift+Escape hint, supported/fallback sources and physical-key/IME
+policy were readable without clipping. No preferences were changed and no live
+connection was opened during this check. Xcode device tools required a new
+project approval, so native UI automation was used instead.
 
 ## Remaining acceptance and limits
 
