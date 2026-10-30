@@ -67,6 +67,14 @@ Xcode 16.4 CI found Swift 6.1 rejected a raw CoreVideo buffer capture in the
 pairing stress test that the local compiler accepted. An immutable sendable test
 wrapper fixes the ownership declaration; the affected suite passes locally.
 The pinned-toolchain CI rerun and compatibility refresh are recorded on the PR.
+The final local rerun after that test-only fix again passed 75 tests and every
+runnable gate except the stale compatibility record. The official recording
+tool then refreshed the current pin from clean local and Linux CI summaries;
+record consistency passes. Qualification is intentionally **unqualified**, with
+the live-host gate unavailable at the final test-wrapper source revision. The
+earlier product-source CPU failures remain explicit below; they are not reused
+as passing evidence or hidden by the GPU result. Xcode 16.4 CI for the wrapper
+fix was still running when the evidence record was prepared.
 
 Diagnostic costs from 30 Dual420 reconstructions plus 30 Single420 conversions
 at each size (command-buffer GPU timestamps, including readback; not isolated
