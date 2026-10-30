@@ -90,8 +90,11 @@ GATES = [
      [["scripts/test-app.sh"] + ["-only-testing:GliffMacTests/" + suite for suite in (
          "AccessUnitTests", "FrameGeometryTests", "H264DecoderTests", "RemoteSurfaceTests",
          "LiveSessionTests")]]),
-    ("metal-chroma", "Dual420 Metal recombination against the reference", False, "planned:08",
-     []),
+    ("metal-chroma", "Dual420 pair decode and Metal recombination against the reference",
+     True, "macos",
+     [["scripts/test-app.sh"] + ["-only-testing:GliffMacTests/" + suite for suite in (
+         "ChromaRecombinationTests", "Dual420DecoderTests", "FrameJobTests",
+         "ColorSignallingTests")]]),
     ("remote-input", "Keyboard/pointer mapping and escape shortcut", False, "planned:09", []),
     ("displays-reconnect", "Mirror/headless, resize and reconnection", False, "planned:10", []),
     ("clipboard", "Shared clipboard transfers and isolation", False, "planned:11", []),

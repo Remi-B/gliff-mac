@@ -14,7 +14,26 @@ enum VideoFixtures {
     /// `decoded_bgra_sha256` per frame id: upstream's OpenH264 decode and
     /// fixed-point conversion of every frame.
     static func referenceHashes(_ name: String) throws -> [UInt64: String] {
+        try referenceHashes(manifest: root.appending(path: "tests/fixtures/streams/\(name).json"))
+    }
+
+    /// Per-frame `chroma_stripe_psnr_db` and `rest_psnr_db` of a synthetic
+    /// manifest: upstream's decode against the generator's source picture.
+    static func referencePSNR(_ name: String) throws -> [UInt64: (stripe: Double, rest: Double)] {
         let data = try Data(contentsOf: root.appending(path: "tests/fixtures/streams/\(name).json"))
+        let manifest = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        var values: [UInt64: (stripe: Double, rest: Double)] = [:]
+        for frame in manifest["frames"] as! [[String: Any]] {
+            values[(frame["frame_id"] as! NSNumber).uint64Value] = (
+                (frame["chroma_stripe_psnr_db"] as! NSNumber).doubleValue,
+                (frame["rest_psnr_db"] as! NSNumber).doubleValue
+            )
+        }
+        return values
+    }
+
+    static func referenceHashes(manifest url: URL) throws -> [UInt64: String] {
+        let data = try Data(contentsOf: url)
         let manifest = try JSONSerialization.jsonObject(with: data) as! [String: Any]
         var hashes: [UInt64: String] = [:]
         for frame in manifest["frames"] as! [[String: Any]] {
@@ -26,8 +45,13 @@ enum VideoFixtures {
     /// The configurations and frames a recorded stream delivers through the
     /// real bridge, in wire order. Each frame is reported decoded at once.
     static func items(_ name: String) async throws -> [VideoItem] {
+        try await items(stream: try stream(name))
+    }
+
+    /// The same for any recorded stream, advertising what the app does.
+    static func items(stream: Data) async throws -> [VideoItem] {
         let session = try GliffSession(
-            target: .replay(stream: try stream(name)), options: SessionOptions(chroma: [.single420]))
+            target: .replay(stream: stream), options: SessionOptions(chroma: LiveSession.chroma))
         let collected = OSAllocatedUnfairLock(initialState: (items: [VideoItem](), ended: false))
         let relay = SessionRelay(
             video: { [weak session] item in

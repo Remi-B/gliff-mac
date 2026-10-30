@@ -27,8 +27,7 @@ protocol SessionFactory {
 /// The real session: system OpenSSH and the bridge's protocol driver.
 struct LiveSessionFactory: SessionFactory {
     func makeSession(for request: ConnectionRequest) throws -> any RemoteSession {
-        // Live SSH is H.264/Single420 until full chroma lands (task 08).
-        try LiveSession(target: request.target(), options: SessionOptions(chroma: [.single420]))
+        try LiveSession(target: request.target(), options: SessionOptions(chroma: LiveSession.chroma))
     }
 }
 
@@ -40,6 +39,11 @@ struct LiveSessionFactory: SessionFactory {
 /// output callback: acknowledgements never wait for the main thread or the
 /// window. The decoder is invalidated on cancel and when the session ends.
 final class LiveSession: RemoteSession {
+    /// What `H264Decoder` and `VideoRenderer` implement, preferred first:
+    /// full chroma, and Single420 for the server's low-bandwidth rungs.
+    /// Native 4:4:4, H.265 and AV1 are not implemented and never advertised.
+    nonisolated static let chroma: [ChromaMode] = [.dual420, .single420]
+
     private let session: GliffSession
     private let decoder: H264Decoder
 
@@ -81,6 +85,6 @@ final class LiveSession: RemoteSession {
         let s = stats
         let v = decoder.display.diagnostics
         Logger(subsystem: "com.remi-b.gliff-mac", category: "video").info(
-            "session video: delivered \(s.framesDelivered) dropped \(s.framesDropped) acks \(s.acksSent) keyframe requests \(s.keyframeRequests); decoded \(v.decoded) failed \(v.failed) discarded \(v.discarded) presented \(v.presented) replaced \(v.droppedBeforeDisplay) out of order \(v.outOfOrder) decoders \(v.decoderSessions) hardware \(v.hardwareAccelerated.map { $0 ? "yes" : "no" } ?? "unknown", privacy: .public)")
+            "session video: delivered \(s.framesDelivered) dropped \(s.framesDropped) acks \(s.acksSent) keyframe requests \(s.keyframeRequests); decoded \(v.decoded) pairs \(v.pairsDecoded) failed \(v.failed) half failures \(v.halfFailures) expired \(v.expired) discarded \(v.discarded) presented \(v.presented) replaced \(v.droppedBeforeDisplay) out of order \(v.outOfOrder) decoders \(v.decoderSessions) hardware \(v.hardwareAccelerated.map { $0 ? "yes" : "no" } ?? "unknown", privacy: .public) max pending \(v.maxPending) completion max \(v.completionMicrosMax) us picture bytes \(v.pictureBytes)")
     }
 }

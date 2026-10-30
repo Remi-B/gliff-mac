@@ -34,8 +34,9 @@ sequenceDiagram
 ## Records
 
 `DecoderSupport { codecs, chroma }` — exactly what the native decoder implements;
-`ClientCaps.codecs`/`chroma` are built from it. Initially `[H264]`, `[Single420]` (task 07);
-`[Dual420, Single420]` once task 08 lands. Native444, H.265, AV1, RawBgra: never.
+`ClientCaps.codecs`/`chroma` are built from it. `[H264]`, `[Single420]` in task 07;
+`[H264]`, `[Dual420, Single420]` since task 08 (the app's `LiveSession.chroma`).
+Native444, H.265, AV1, RawBgra: never.
 
 `VideoConfig` — one per `StreamConfig`:
 
@@ -96,7 +97,9 @@ does not auto-reconnect.
    late ack lowers the bitrate.
 7. **Completion semantics (task 07).** VideoToolbox decodes asynchronously; completion is
    the output callback for that frame (`kVTDecodeInfo_*` flags), not submission. For
-   Dual420, completion is when both main and aux callbacks have fired. Rust sends the ack
+   Dual420, completion is when both main and aux callbacks have fired (task 08: either
+   half failing completes the frame as failed at once; a half still missing after 3 s
+   fails it, well before the bridge's 15 s stall limit). Rust sends the ack
    when Swift reports completion through the bridge; Swift never writes to the wire.
 8. **Queues (task 05).** Compressed frames are bounded by count and bytes (initial
    budget: 4 frames and 2 × the largest keyframe seen, never below 8 MiB). When the budget

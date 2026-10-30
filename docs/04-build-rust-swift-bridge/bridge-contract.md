@@ -45,7 +45,7 @@ flowchart LR
 | `GliffSession(target:options:)` | Validates and builds; nothing runs. Typed `GliffError.InvalidOptions` |
 | `ConnectionTarget.ssh(host:user:port:serverPath:identityFile:headless:)` | Restricted host/user syntax, nonzero port, literal remote executable (no leading `~`) and optional absolute identity path; starts system OpenSSH with strict verification and batch authentication |
 | `ConnectionTarget.replay(stream:)` | A recorded `.gliffstream`, for tests and diagnostics; client messages are counted, not sent |
-| `SessionOptions` | Decoder chroma modes for replay (live SSH is restricted to H.264/Single420 until task 08), keymap, in-flight budget (default 4 frames, 8 MiB) |
+| `SessionOptions` | Decoder chroma modes advertised to the server, preferred first (SSH and replay alike since task 08; the app sends `[Dual420, Single420]`), keymap, in-flight budget (default 4 frames, 8 MiB) |
 | `start(delegate:)` | Once; `AlreadyStarted` afterwards. A refused start keeps no delegate |
 | `reportDecode(frameId:outcome:)` | `decoded`, `failed` (requests a keyframe) or `discarded`; `UnknownFrame`, `NotRunning` |
 | `sendInput(event:)` | Key (evdev), pointer, scroll, resize; `Busy` beyond 256 queued, `NotRunning` after the end |
@@ -127,7 +127,7 @@ captures nothing but its two closures, so interface models are captured weakly t
 - x86_64 runtime: both slices are built and linked here; running them needs Intel
   hardware (this Mac has no Rosetta), a hardware gate of task 12.
 
-`state()` exposes connecting (constructed), handshaking (started), streaming (first StreamConfig accepted), stopping, closed and failed. Poll this query for UI state; callback ordering is unchanged. SSH always advertises H264/Single420; replay keeps configured chroma. Startup is bounded to 20 seconds including blocked Hello writes; OpenSSH connection attempts use 10 seconds. A native frame awaiting completion for 15 seconds ends with a transport timeout, including while a write or delivery is blocked. Teardown kills/reaps SSH and drains or aborts/joins the bounded stderr worker before onEnded. Diagnostics use fixed setup guidance rather than returning raw stderr.
+`state()` exposes connecting (constructed), handshaking (started), streaming (first StreamConfig accepted), stopping, closed and failed. Poll this query for UI state; callback ordering is unchanged. SSH and replay advertise H264 with the configured chroma modes (task 05–07 forced Single420 on SSH until task 08 implemented Dual420). Startup is bounded to 20 seconds including blocked Hello writes; OpenSSH connection attempts use 10 seconds. A native frame awaiting completion for 15 seconds ends with a transport timeout, including while a write or delivery is blocked. Teardown kills/reaps SSH and drains or aborts/joins the bounded stderr worker before onEnded. Diagnostics use fixed setup guidance rather than returning raw stderr.
 
 User names accept only ASCII letters, digits, `.`, `_` and `-`, with no leading
 `-`. Server executables are quoted literally: use an absolute path, a relative

@@ -78,12 +78,10 @@ impl GliffSession {
     #[uniffi::constructor]
     pub fn new(target: ConnectionTarget, options: SessionOptions) -> Result<Arc<Self>, GliffError> {
         target.validate()?;
-        let mut config = options.to_core()?;
-        if matches!(target, ConnectionTarget::Ssh { .. }) {
-            config.support = gliff_client_core::video::DecoderSupport::h264(&[
-                gliff_proto::ChromaMode::Single420,
-            ]);
-        }
+        // SSH and replay advertise the configured chroma modes: `ChromaMode`
+        // only has the two the native decoder implements (Dual420 since
+        // task 08, Single420), so nothing else can reach the server.
+        let config = options.to_core()?;
         let (control, driver) = Control::new(config.budget);
         Ok(Arc::new(Self {
             config,
@@ -279,4 +277,47 @@ fn deliver(
             message: "the session task stopped unexpectedly".into(),
         },
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Since task 08 an SSH session advertises the native decoder's modes
+    /// as configured, Dual420 included, instead of forcing Single420.
+    #[test]
+    fn ssh_targets_advertise_the_configured_chroma_modes() {
+        let target = ConnectionTarget::Ssh {
+            host: "host".into(),
+            user: None,
+            port: None,
+            server_path: None,
+            identity_file: None,
+            headless: true,
+        };
+        for chroma in [
+            vec![ChromaMode::Dual420, ChromaMode::Single420],
+            vec![ChromaMode::Single420],
+        ] {
+            let options = SessionOptions {
+                chroma: chroma.clone(),
+                keymap: String::new(),
+                max_in_flight_frames: 4,
+                min_in_flight_bytes: 8 << 20,
+            };
+            let session = GliffSession::new(target.clone(), options).unwrap();
+            let expected: Vec<_> = chroma
+                .iter()
+                .map(|mode| match mode {
+                    ChromaMode::Single420 => gliff_proto::ChromaMode::Single420,
+                    ChromaMode::Dual420 => gliff_proto::ChromaMode::Dual420,
+                })
+                .collect();
+            assert_eq!(session.config.support.chroma, expected);
+            assert_eq!(
+                session.config.support.codecs,
+                vec![gliff_proto::Codec::H264]
+            );
+        }
+    }
 }

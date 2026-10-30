@@ -1,6 +1,11 @@
 # 08 — render-full-chroma-metal
 
-Status: planned. Dependencies: [07](../07-decode-and-display-h264/README.md).
+Status: implemented on `feat/full-chroma-metal-rendering`, awaiting review and the
+live Dual420 run. Fixture pairs (synthetic, live CPU, live GPU) decode and
+recombine bit-exact with upstream's reference. Dependencies:
+[07](../07-decode-and-display-h264/README.md).
+
+Results: [implementation record](implementation-record.md).
 
 ## Outcome
 
@@ -9,20 +14,22 @@ recombination. Native H.264 4:4:4 decoding is not assumed or advertised.
 
 ## Work
 
-- [ ] Create independent main/aux VideoToolbox sessions and retain both results
+- [x] Create independent main/aux VideoToolbox sessions and retain both results
   under the same frame ID/configuration generation. Do not pair whichever buffers
   happen to complete last; handle asynchronous outputs and delayed/missing partners.
-- [ ] Implement upstream's precise main/aux chroma layout in Metal, referencing
+- [x] Implement upstream's precise main/aux chroma layout in Metal, referencing
   `gliff-proto/src/chroma.rs` and `color.rs` at the pinned SHA. Preserve plane strides,
   pixel formats, colour range/matrix and geometry; use CoreVideo texture mapping.
-- [ ] Build a CPU/reference fixture comparison for reconstruction and colour
+- [x] Build a CPU/reference fixture comparison for reconstruction and colour
   conversion, with exact checks where algorithms are integer-equivalent and defined
   tolerances where GPU arithmetic or lossy H.264 requires them.
-- [ ] Render completed pairs and remote cursor in a bounded Metal presentation path.
+- [x] Render completed pairs ~~and remote cursor~~ in a bounded Metal presentation path.
   Maintain Single420 support and safe mode changes during bandwidth adaptation.
-- [ ] Publish `[Dual420, Single420]` capabilities only when supported by the current
+  (The remote cursor belongs to [task 09](../09-implement-remote-input/README.md);
+  it is satisfied by the integrated result, not by this branch.)
+- [x] Publish `[Dual420, Single420]` capabilities only when supported by the current
   native pipeline. Keep Native444/H265/AV1 unadvertised unless separately implemented.
-- [ ] Define decode feedback for a complete pair and failure of either stream.
+- [x] Define decode feedback for a complete pair and failure of either stream.
   Bound waiting pairs, request keyframes/reconfigure on failure, and avoid a silent
   half-colour frame or unbounded wait. Measure GPU/pixel-buffer lifetimes.
 
