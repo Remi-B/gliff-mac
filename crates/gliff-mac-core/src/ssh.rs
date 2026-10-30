@@ -85,6 +85,7 @@ fn command(target: &ConnectionTarget, policy: &Path) -> Command {
         server_path,
         identity_file,
         headless,
+        video_mode,
     } = target
     else {
         unreachable!()
@@ -116,11 +117,14 @@ fn command(target: &ConnectionTarget, policy: &Path) -> Command {
     if let Some(identity) = identity_file {
         cmd.args(["-i", identity]);
     }
-    let remote = format!(
+    let mut remote = format!(
         "exec {} --stdio{}",
         quote(server_path.as_deref().unwrap_or("gliff-server")),
         if *headless { " --headless" } else { "" }
     );
+    if let Some(mode) = video_mode.flag() {
+        remote.push_str(&format!(" --video {mode}"));
+    }
     cmd.arg("--").arg(host).arg(remote);
     cmd.stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -346,6 +350,7 @@ mod tests {
             server_path: Some("/tmp/a'b".into()),
             identity_file: Some("/tmp/key file".into()),
             headless: true,
+            video_mode: VideoMode::Cpu,
         };
         target.validate().unwrap();
         let cmd = command(&target, Path::new("/tmp/policy"));
@@ -358,7 +363,34 @@ mod tests {
         assert!(args.contains(&"-oStrictHostKeyChecking=yes"));
         assert!(args.contains(&"-oForwardAgent=no"));
         assert!(args.contains(&"-oForwardX11=no"));
-        assert_eq!(args.last(), Some(&"exec '/tmp/a'\\''b' --stdio --headless"));
+        assert_eq!(
+            args.last(),
+            Some(&"exec '/tmp/a'\\''b' --stdio --headless --video cpu")
+        );
+    }
+    #[test]
+    fn video_mode_is_an_enum_backed_remote_argument() {
+        for (mode, expected) in [
+            (VideoMode::Auto, "exec 'gliff-server' --stdio"),
+            (VideoMode::Cpu, "exec 'gliff-server' --stdio --video cpu"),
+            (VideoMode::Gpu, "exec 'gliff-server' --stdio --video gpu"),
+        ] {
+            let target = ConnectionTarget::Ssh {
+                host: "host".into(),
+                user: None,
+                port: None,
+                server_path: None,
+                identity_file: None,
+                headless: false,
+                video_mode: mode,
+            };
+            let args: Vec<_> = command(&target, Path::new("/tmp/policy"))
+                .as_std()
+                .get_args()
+                .map(|s| s.to_str().unwrap().to_owned())
+                .collect();
+            assert_eq!(args.last().unwrap(), expected);
+        }
     }
     #[test]
     fn diagnostics_are_actionable_and_redacted() {

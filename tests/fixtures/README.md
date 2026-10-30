@@ -33,8 +33,11 @@ pipeline, sizes, scale, fps cap); and per frame: generation, revision, `frame_id
 synthetic streams PSNR against the source in the 1-px chroma stripe and elsewhere.
 
 Expected decoded output: the H.264 pictures are bit-exact for any conforming decoder,
-but BGRA conversion is not normative. Native decoders (task 07/08) compare against the
-PSNR figures within a tolerance, not against `decoded_bgra_sha256`.
+but BGRA conversion is not normative. The app's VideoToolbox decode with its Metal
+conversion (task 07) and Dual420 recombination (task 08) reproduce
+`decoded_bgra_sha256` byte for byte, since they use upstream's integer arithmetic; the
+synthetic manifests' PSNR figures are also checked against the generator's source
+picture, within the rounding of the manifest (0.01 dB).
 
 ## Regenerating and checking
 

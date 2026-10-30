@@ -2,6 +2,12 @@
 
 Status: planned. Dependencies: [07](../07-decode-and-display-h264/README.md).
 
+> Integration: the connection form also carries a video encoder picker
+> (`ConnectionRequest.videoMode`, `ServerVideoMode`). It sits in the Server
+> section of `ConnectionForm`; keep it when adding keymap/capture settings, and
+> keep `videoMode` in the stored `ConnectionRequest` keys next to any keymap field
+> (older entries must still decode, see `init(from:)`).
+
 ## Outcome
 
 Control the remote desktop through correctly mapped macOS events, with an explicit

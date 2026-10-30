@@ -28,6 +28,9 @@ release budgets rather than inventing unmeasured latency/FPS claims.
 - [ ] Measure first-frame time, decode/presentation latency, input response, FPS,
   compressed/FFI bandwidth, frame queue/byte counts, CPU/GPU use and memory. Document
   clock methodology; do not subtract unsynchronized server/client clocks as latency.
+- [ ] Investigate startup quality, encoder behavior and presentation scaling using
+  the [video quality investigation](video-quality.md), including a comparison
+  with the original Gliff client where practical.
 - [ ] Baseline 1080p and high-resolution/Retina workloads, static text, rapid scroll,
   colour patterns and long sessions over LAN and shaped slow/high-latency links.
   Set reviewed p50/p95 and memory/queue budgets from those baselines before release.

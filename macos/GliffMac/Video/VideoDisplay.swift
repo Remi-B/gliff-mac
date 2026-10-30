@@ -33,6 +33,25 @@ final class VideoDisplay: Sendable {
         var recovering = false
         /// The last VideoToolbox or CoreMedia status that failed a frame.
         var lastError: OSStatus?
+
+        // Dual420 pairing and native cost, for diagnostics and task 12.
+        /// Dual420 frames whose main and auxiliary pictures both decoded.
+        var pairsDecoded: UInt64 = 0
+        /// Frames failed because one half (main or aux) failed; the partner
+        /// was not waited for.
+        var halfFailures: UInt64 = 0
+        /// Frames failed because a half never came back before the deadline
+        /// (or before the decoder closed).
+        var expired: UInt64 = 0
+        /// Most frames inside VideoToolbox at once (the bridge bounds them).
+        var maxPending: Int = 0
+        /// Submission to settlement of each frame (both halves for Dual420).
+        var completionMicrosTotal: UInt64 = 0
+        var completionMicrosMax: UInt64 = 0
+        /// IOSurface bytes of the last decoded picture (main + aux).
+        var pictureBytes: Int = 0
+        /// Whether the last decoded picture has full chroma (Dual420).
+        var fullChroma: Bool?
     }
 
     private struct State {
@@ -61,7 +80,12 @@ final class VideoDisplay: Sendable {
     /// there: output callbacks may complete out of order, and frame IDs
     /// increase across generations.
     func post(_ frame: DecodedFrame) {
-        let wake = state.withLock { state -> (@Sendable () -> Void)? in
+        postDeferred(frame)?()
+    }
+
+    /// Installs a picture without invoking the observer until the caller releases its lock.
+    func postDeferred(_ frame: DecodedFrame) -> (@Sendable () -> Void)? {
+        state.withLock { state -> (@Sendable () -> Void)? in
             if let latest = state.latest, latest.frameID >= frame.frameID {
                 state.diagnostics.outOfOrder += 1
                 return nil
@@ -77,7 +101,6 @@ final class VideoDisplay: Sendable {
             state.waiting = true
             return state.onFrame
         }
-        wake?()
     }
 
     /// The latest picture, for drawing. Marks a waiting picture taken.

@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreMedia
 import CoreVideo
 import GliffCore
 
@@ -78,12 +79,24 @@ struct ColorConversion: Equatable, Sendable {
         return Coefficients(yOffset: yOffset, ky: q(ky), krv: q(krv), kgu: q(kgu), kgv: q(kgv), kbu: q(kbu))
     }
 
-    /// Reads the decoded buffer's own metadata; untagged buffers follow the
-    /// upstream reference (BT.709).
-    init(_ buffer: CVPixelBuffer) {
+    /// The range of the decoded buffer's pixel format, and the matrix the
+    /// stream itself signals (its SPS VUI, in `format`). A stream without
+    /// a colour description follows the upstream reference, BT.709:
+    /// upstream's encoders always convert with it, and its VA-API encoder
+    /// writes no VUI. The buffer's own matrix attachment is not used, since
+    /// VideoToolbox fills it with a guess for untagged streams (BT.601 for
+    /// standard-definition sizes).
+    init(_ buffer: CVPixelBuffer, format: CMFormatDescription?) {
         fullRange = CVPixelBufferGetPixelFormatType(buffer) == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
-        let tag = CVBufferCopyAttachment(buffer, kCVImageBufferYCbCrMatrixKey, nil) as? String
-        matrix = tag == (kCVImageBufferYCbCrMatrix_ITU_R_601_4 as String) ? .bt601 : .bt709
+        matrix = Self.matrix(signalledBy: format)
+    }
+
+    /// The matrix a format description's VUI signals; BT.709 when none.
+    static func matrix(signalledBy format: CMFormatDescription?) -> Matrix {
+        let tag = format.flatMap {
+            CMFormatDescriptionGetExtension($0, extensionKey: kCMFormatDescriptionExtension_YCbCrMatrix) as? String
+        }
+        return tag == (kCMFormatDescriptionYCbCrMatrix_ITU_R_601_4 as String) ? .bt601 : .bt709
     }
 
     init(matrix: Matrix, fullRange: Bool) {
@@ -92,9 +105,10 @@ struct ColorConversion: Equatable, Sendable {
     }
 }
 
-/// One picture the decoder produced, ready to present. The pixel buffer is
-/// IOSurface-backed and Metal compatible; it is immutable once delivered.
+/// One picture the decoder produced, ready to present. The pixel buffers are
+/// IOSurface-backed and Metal compatible; they are immutable once delivered.
 struct DecodedFrame: @unchecked Sendable {
+    /// The main picture: luma and, for Single420, the only chroma.
     let pixelBuffer: CVPixelBuffer
     let geometry: FrameGeometry
     let color: ColorConversion
@@ -103,4 +117,11 @@ struct DecodedFrame: @unchecked Sendable {
     let ptsMicros: UInt64
     /// Set by the display: increases with every picture posted to it.
     var sequence: UInt64 = 0
+    /// Dual420: the auxiliary picture decoded from the same frame ID and
+    /// generation, which carries the chroma the main picture lacks. `nil`
+    /// for Single420.
+    var aux: CVPixelBuffer? = nil
+
+    /// Whether this picture has full (4:4:4) chroma.
+    var isFullChroma: Bool { aux != nil }
 }

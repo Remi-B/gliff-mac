@@ -129,7 +129,9 @@ ordering, budget and teardown rules are in the [bridge contract](04-build-rust-s
 
 Gates: `bridge-build` (the script), `swift-package` (package and tests built for arm64
 and x86_64), `bridge-import` (`swift test` on the host architecture), `macos-app`,
-`app-tests` and `video-decode` (the video suites of the app tests).
+`app-tests`, `video-decode` (the Single420 video suites of the app tests) and
+`metal-chroma` (the Dual420 suites: `ChromaRecombinationTests`,
+`Dual420DecoderTests`, `FrameJobTests`, `ColorSignallingTests`).
 
 ## Native app
 
@@ -147,22 +149,42 @@ xcodebuild -project macos/GliffMac.xcodeproj -scheme GliffMac -configuration Deb
 arguments go to `xcodebuild`, for example `-only-testing:GliffMacTests/H264DecoderTests`.
 The hosted `GliffMacTests` bundle (Swift Testing, macOS 14+) covers the view
 model with a fake session, persistence, the quit drain, the real `LiveSession`
-over recorded streams, and the video pipeline: VideoToolbox decode and the
-Metal conversion of the committed fixtures, compared byte for byte with
-upstream's reference output (`decoded_bgra_sha256`). The project uses file-system synchronized folders: new files
+over recorded streams, and the video pipeline: VideoToolbox decode, the
+Metal conversion (Single420) and recombination (Dual420) of the committed
+fixtures, compared byte for byte with upstream's reference output
+(`decoded_bgra_sha256`) and with CPU ports of upstream's chroma and colour
+code (`GliffMacTests/ChromaReference.swift`). The project uses file-system synchronized folders: new files
 under `macos/GliffMac` or `macos/GliffMacTests` join their target without
 project edits (Xcode 16 or later).
 
-Video (`macos/GliffMac/Video`, [task 07 record](07-decode-and-display-h264/implementation-record.md)):
+Video (`macos/GliffMac/Video`, task [07](07-decode-and-display-h264/implementation-record.md)
+and [08](08-render-full-chroma-metal/implementation-record.md) records):
 the bridge's delivery thread hands configurations and frames to `H264Decoder`,
-which owns a `VTDecompressionSession` on a serial queue and reports each frame
-to the session from its VideoToolbox output callback. Decoded pictures go to a
-latest-wins `VideoDisplay`; the remote surface's `CAMetalLayer` draws them with
-`VideoRenderer`: an exact BT.709 limited-range conversion pass (task 08 replaces
-it for Dual420), then an aspect-fit presentation pass. Shaders compile from
+which owns one `VTDecompressionSession` per stream (main, and aux for Dual420)
+on a serial queue. Each frame is a `FrameJob` its output callbacks complete;
+it is reported to the session once, when both halves decoded, when either
+failed, or at a 3-second deadline. Decoded pictures (the main and aux buffers
+of one frame ID and generation) go to a latest-wins `VideoDisplay`; the remote
+surface's `CAMetalLayer` draws them with `VideoRenderer`: an exact BT.709
+limited-range conversion pass (Single420) or AVC444 recombination pass
+(Dual420), then an aspect-fit presentation pass. Shaders compile from
 source at run time, so no separate Metal toolchain is needed. The `video` log
 category records decoder sessions, failures and, at each session's end, its
-frame counters (no host or picture content).
+frame counters, Dual420 pair counters and native costs (no host or picture
+content).
+
+Replaying recorded live sessions natively (for example the
+`session.gliffstream` that `scripts/live-host-check.sh` writes):
+
+```bash
+TEST_RUNNER_GLIFF_LIVE_STREAMS=/abs/a.gliffstream:/abs/b.gliffstream scripts/test-app.sh \
+  -only-testing:GliffMacTests/Dual420DecoderTests/recordedLiveStreamsDecodeNatively
+```
+
+Every frame must decode; the Metal output must equal the CPU reference, and a
+`<name>.json` manifest beside a stream (`gliff-fixture-gen describe`) must match.
+The test prints one `live-replay` line per stream; it is skipped without the
+variable.
 
 `SessionController` (one per window, main actor) owns the connection form and
 phases, and ignores callbacks from sessions it replaced. `SessionRegistry` owns
@@ -234,7 +256,8 @@ behaviour in a Finder-launched app; signing and notarization are task 13.
 ## GUI SSH transport and headless probe
 
 `ConnectionTarget.ssh` takes host/config alias, optional user/port/server path,
-optional absolute identity file and a headless Boolean. It invokes `/usr/bin/ssh`
+optional absolute identity file, a headless Boolean and a `VideoMode` enum
+(`auto` omits `--video`; `cpu`/`gpu` pass the two values the pinned server accepts). It invokes `/usr/bin/ssh`
 with local argv, strict known-host verification, batch key/agent authentication,
 no TTY and no forwarding/control socket. Existing SSH config aliases, identities,
 agent and ProxyJump still apply. The remote executable is shell quoted and options

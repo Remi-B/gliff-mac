@@ -32,6 +32,12 @@ struct ConnectionForm: View {
                     field(.serverPath, "Server", text: $controller.request.serverPath, prompt: "gliff-server")
                     Toggle("Use a virtual display", isOn: $controller.request.headless)
                         .help("Off mirrors the server's current output instead")
+                    Picker("Video encoder", selection: $controller.request.videoMode) {
+                        ForEach(ServerVideoMode.allCases) { mode in
+                            Text(mode.label).tag(mode)
+                        }
+                    }
+                    .help("Auto lets the server choose. CPU selects CPU encoding; GPU prefers GPU and may fall back to CPU.")
                 }
                 Section {
                     HStack {
