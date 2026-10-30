@@ -43,3 +43,9 @@ keyboard-layout policy and reliable local control release.
   events. The release shortcut works repeatedly and unsupported shortcuts are listed.
 - Acceptance evidence distinguishes physical-key support from text/IME support;
   keyboard limitations are visible before a user relies on the connection.
+
+From task 06: `SessionController.isCapturingInput`, the ⇧⎋ release
+command (`Preferences.releaseShortcut`), the capture preference and focus-loss
+release already exist; `RemoteSurface.SurfaceView` is the first responder that
+should receive the events. Each window owns its session, so capture is per
+window.

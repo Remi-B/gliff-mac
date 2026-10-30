@@ -195,7 +195,7 @@
       "role": "current-pin",
       "result": "qualified",
       "reason": "every required gate passed; human review decides the merge",
-      "date": "2026-10-29T23:13:44Z",
+      "date": "2026-10-30T00:49:25Z",
       "upstream": {
         "sha": "58c742452ded3f10a2ce61f60eb4845f18205e29",
         "describe": "v0.4.1",
@@ -203,8 +203,7 @@
       },
       "client": {
         "source_shas": [
-          "497a82bdf58c2d5974968f21848a5b183da25ed2",
-          "4dcf20a8130c3f31669c7014aca125745e2a1524"
+          "18e6c6aba76978f08d568ae8728cd590486c9cfc"
         ],
         "dirty": false,
         "lockfile_sha256": "6ce1bad1b88658a2a8179fd2e8ad765822fe27bd48605d7adbfaedc057911318"
@@ -220,33 +219,33 @@
           "arch": "arm64",
           "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)",
           "xcode": "Xcode 27.1",
-          "date": "2026-10-29T23:03:12Z"
-        },
-        {
-          "os": "Linux 7.0.0-1017-azure",
-          "arch": "x86_64",
-          "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)",
-          "xcode": null,
-          "date": "2026-10-29T23:07:42Z"
+          "date": "2026-10-30T00:43:40Z"
         },
         {
           "os": "macOS 15.7.9",
           "arch": "arm64",
           "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)",
           "xcode": "Xcode 16.4",
-          "date": "2026-10-29T23:07:56Z"
+          "date": "2026-10-30T00:44:40Z"
+        },
+        {
+          "os": "Linux 7.0.0-1017-azure",
+          "arch": "x86_64",
+          "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+          "xcode": null,
+          "date": "2026-10-30T00:44:19Z"
         },
         {
           "os": "Linux 7.0.0-1017-azure",
           "arch": "x86_64",
           "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13) (Arch Linux rust 1:1.99.1-1)",
           "xcode": null,
-          "date": "2026-10-29T23:07:58Z"
+          "date": "2026-10-30T00:44:28Z"
         }
       ],
       "servers": [
         {
-          "host": "omarchy-mbp.local",
+          "host": "remi@omarchy-mbp.local",
           "source_sha": "58c742452ded3f10a2ce61f60eb4845f18205e29",
           "lockfile_sha256": "0dfd5f89b00821d8e5235cf52b39746aa66b0d3160b8ca648a04c89adaf2584b",
           "version": "gliff-server 0.4.1",
@@ -259,7 +258,7 @@
             "--video",
             "cpu"
           ],
-          "date": "2026-10-29T23:04:46Z",
+          "date": "2026-10-30T00:44:57Z",
           "status": "passed",
           "session": {
             "chroma": "single420",
@@ -292,7 +291,7 @@
                 "fps_cap": 30
               }
             ],
-            "stream_sha256": "dc2a1673e8d6efef762fd306df7b182a0171a37c9f4012450ae7425cb6e94765"
+            "stream_sha256": "8dfdae12c7d67adaa3b095ed39452c094796b1ea38b57eda78bf6f2fe72c980b"
           }
         }
       ],
@@ -312,6 +311,7 @@
         "swift-package": "passed",
         "bridge-import": "passed",
         "macos-app": "passed",
+        "app-tests": "passed",
         "upstream-linux": "passed",
         "live-host": "passed",
         "ssh-session": "passed",
@@ -323,6 +323,7 @@
         "acceptance": "unavailable"
       },
       "required": [
+        "app-tests",
         "apple-rust-arm64",
         "apple-rust-x86_64",
         "bridge-build",

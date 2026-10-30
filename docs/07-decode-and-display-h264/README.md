@@ -49,3 +49,8 @@ This is a view-only alpha milestone; it does not claim Gliff's full-chroma quali
   teardown releases native buffers and callbacks.
 - Record Apple Silicon and Intel build/runtime results separately; hardware
   availability limitations remain visible in the compatibility matrix.
+
+From task 06: replace `LiveSession`'s placeholder video closure
+(`macos/GliffMac/Model/RemoteSession.swift`), which reports frames `decoded`
+for pacing only. Host the layer in `RemoteSurface.SurfaceView`, and set
+`StreamInfo.displaysVideo` so the surface stops showing its placeholder.

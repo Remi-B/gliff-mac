@@ -3,10 +3,11 @@
 A native macOS client for [Gliff](https://github.com/omacom/gliff), connecting to
 an existing Linux/Hyprland host over SSH.
 
-This repository currently contains the project foundation: a native app launch
-shell, app-owned Rust workspace, the Rust/Swift bridge (UniFFI facade, session driver,
-universal XCFramework and Swift package), and pinned upstream source. SSH connections,
-video, input and clipboard are subsequent implementation tasks.
+This repository contains the app-owned Rust workspace, the Rust/Swift bridge
+(UniFFI facade, session driver, universal XCFramework and Swift package), secure SSH
+sessions, a native SwiftUI/AppKit app that connects to a real server, and pinned
+upstream source. Video display, full chroma, input and clipboard are subsequent
+implementation tasks: the app connects and streams, but does not display video yet.
 
 ## Get started
 
@@ -25,6 +26,7 @@ and initializes the exact upstream commit, never the latest moving branch.
 On a Mac, run `scripts/build-bridge.sh` once (and after Rust changes) before opening
 `macos/GliffMac.xcodeproj` with the shared **GliffMac** scheme, or run
 `scripts/build-app.sh`, which builds the bridge and an unsigned universal development app.
+`scripts/test-app.sh` runs the app's tests through the scheme's test action.
 
 ## Source ownership
 

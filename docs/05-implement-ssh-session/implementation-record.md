@@ -1,6 +1,6 @@
 # Task 05 implementation record
 
-Updated: 2026-10-30. Branch `feat/ssh-session`. Status: in review.
+Updated: 2026-10-30. Branch `feat/ssh-session`. Status: merged (#6).
 Dependencies 03 and 04 are merged. Upstream remains the unmodified pinned
 `58c742452ded3f10a2ce61f60eb4845f18205e29` (`gliff-server 0.4.1`).
 

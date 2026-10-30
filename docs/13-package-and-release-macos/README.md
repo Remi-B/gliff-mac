@@ -42,3 +42,8 @@ clear server compatibility, signing/notarization and an upstream update path.
   signing timestamps need not be byte-identical.
 - A staged release and rollback are exercised before public publication. This
   planning task does not itself publish releases or create external repositories.
+
+From task 06: the app declares `NSLocalNetworkUsageDescription`. A
+Finder-launched app needs the Local Network grant for LAN servers, which
+Terminal launches hide. The debug-only `GliffDebugAutoConnect` hook must stay
+out of Release builds.
