@@ -112,7 +112,8 @@ macOS 27.0.1 arm64 (Apple M4 Pro), Xcode 27.1, Rust 1.90.0.
 | Surface | An `NSWindow` surface takes each new picture from the main-queue wake-up, redraws through resizes, and stops after detaching; the renderer draws at odd, 1-pixel and empty sizes |
 | Native acks through the real bridge | `recordedFramesAreDecodedAndAcknowledgedNatively`: replayed sessions end `closed`, `decoded` = delivered, no failures or keyframe requests, `acks` = delivered + dropped |
 | Finder-launched live stream through VideoToolbox | See below |
-| Gates | `scripts/check.sh`: 17 passed, `compatibility-records` failed until the current pin is re-qualified for the newly required `video-decode` gate, 7 unavailable |
+| Gates | `scripts/check.sh` on clean `a4290ed`: 17 passed; `compatibility-records` failed only until the current pin was re-qualified for the newly required `video-decode` gate; 7 unavailable (upstream Linux runs in CI, live-host is separate, five gates belong to later tasks) |
+| Qualification | The current-pin record is qualified from clean `a4290ed`: local macOS 27.0.1 / Xcode 27.1, CI macOS 15.8.2 / Xcode 16.4, CI Ubuntu and upstream Linux, and live CPU Single420 and GPU Dual420 runs against the pinned server. One earlier GPU live run (on `e851188`) failed once with "the client Resize did not produce a second configuration" and passed on rerun; that is the server's GPU resize path, which the app does not drive |
 
 App tests: 49 Swift Testing tests (parameterized ones counted once) in 10 suites, all passing. The new required
 gate `video-decode` runs the video suites (`AccessUnitTests`,
