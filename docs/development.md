@@ -128,8 +128,8 @@ Xcode app links the package and shows the core's build information. The threadin
 ordering, budget and teardown rules are in the [bridge contract](04-build-rust-swift-bridge/bridge-contract.md).
 
 Gates: `bridge-build` (the script), `swift-package` (package and tests built for arm64
-and x86_64), `bridge-import` (`swift test` on the host architecture), `macos-app` and
-`app-tests`.
+and x86_64), `bridge-import` (`swift test` on the host architecture), `macos-app`,
+`app-tests` and `video-decode` (the video suites of the app tests).
 
 ## Native app
 
@@ -143,12 +143,26 @@ xcodebuild -project macos/GliffMac.xcodeproj -scheme GliffMac -configuration Deb
 ```
 
 `scripts/test-app.sh` runs the scheme's test action on the host architecture
-(`xcodebuild … -destination "platform=macOS,arch=$(uname -m)" test`). The hosted
-`GliffMacTests` bundle (Swift Testing, macOS 14+) covers the view model with a
-fake session, persistence, the quit drain and the real `LiveSession` over
-recorded streams. The project uses file-system synchronized folders: new files
+(`xcodebuild … -destination "platform=macOS,arch=$(uname -m)" test`); extra
+arguments go to `xcodebuild`, for example `-only-testing:GliffMacTests/H264DecoderTests`.
+The hosted `GliffMacTests` bundle (Swift Testing, macOS 14+) covers the view
+model with a fake session, persistence, the quit drain, the real `LiveSession`
+over recorded streams, and the video pipeline: VideoToolbox decode and the
+Metal conversion of the committed fixtures, compared byte for byte with
+upstream's reference output (`decoded_bgra_sha256`). The project uses file-system synchronized folders: new files
 under `macos/GliffMac` or `macos/GliffMacTests` join their target without
 project edits (Xcode 16 or later).
+
+Video (`macos/GliffMac/Video`, [task 07 record](07-decode-and-display-h264/implementation-record.md)):
+the bridge's delivery thread hands configurations and frames to `H264Decoder`,
+which owns a `VTDecompressionSession` on a serial queue and reports each frame
+to the session from its VideoToolbox output callback. Decoded pictures go to a
+latest-wins `VideoDisplay`; the remote surface's `CAMetalLayer` draws them with
+`VideoRenderer`: an exact BT.709 limited-range conversion pass (task 08 replaces
+it for Dual420), then an aspect-fit presentation pass. Shaders compile from
+source at run time, so no separate Metal toolchain is needed. The `video` log
+category records decoder sessions, failures and, at each session's end, its
+frame counters (no host or picture content).
 
 `SessionController` (one per window, main actor) owns the connection form and
 phases, and ignores callbacks from sessions it replaced. `SessionRegistry` owns
@@ -161,7 +175,8 @@ macOS Local Network privacy therefore applies to it: allow Gliff once in
 System Settings › Privacy & Security › Local Network to reach `.local` and other
 LAN hosts. A missing grant shows up as an immediate "could not reach the host".
 Launching the binary from Terminal hides this, because Terminal is the
-responsible process.
+responsible process. Debug builds are ad-hoc signed, so every rebuild is a new
+identity to this check and needs the grant again before a live run.
 
 For live checks, debug builds read a one-shot `GliffDebugAutoConnect` default (a
 JSON `ConnectionRequest`), remove it and connect, so a Finder launch needs no UI

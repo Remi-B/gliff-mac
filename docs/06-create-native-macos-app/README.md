@@ -1,6 +1,6 @@
 # 06 — create-native-macos-app
 
-Status: in review; fake-session tests, bridge replay and a Finder-launched live SSH session passed.
+Status: merged (#7); fake-session tests, bridge replay and a Finder-launched live SSH session passed.
 Dependencies: [04](../04-build-rust-swift-bridge/README.md).
 
 ## Outcome

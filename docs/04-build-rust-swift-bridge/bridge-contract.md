@@ -11,7 +11,7 @@ across the FFI.
 flowchart LR
     subgraph Swift
         UI[SwiftUI / main actor]
-        Dec[Decoder, task 07]
+        Dec[H264Decoder, VideoToolbox]
         Relay[SessionRelay]
     end
     subgraph Rust["Rust (GliffCoreFFI)"]
@@ -120,8 +120,10 @@ captures nothing but its two closures, so interface models are captured weakly t
 
 ## Not covered yet
 
-- Live and Finder-environment transport acceptance passed in task 05; real native decode is task 07 and real multi-hop routes are tracked in task 12.
-- Zero-copy frames (`Data` without a copy) and a measured budget: tasks 07 and 12.
+- Live and Finder-environment transport acceptance passed in task 05; native VideoToolbox decode with completion-driven reports passed in task 07; real multi-hop routes are tracked in task 12.
+- Zero-copy frames (`Data` without a copy) and a measured budget: task 12. Task 07
+  copies each frame once more, into its CoreMedia sample, while rewriting start codes
+  to length prefixes.
 - x86_64 runtime: both slices are built and linked here; running them needs Intel
   hardware (this Mac has no Rosetta), a hardware gate of task 12.
 

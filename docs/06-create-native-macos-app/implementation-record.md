@@ -1,6 +1,6 @@
 # Task 06 implementation record
 
-Updated: 2026-10-30. Branch `feat/native-macos-app`. Status: in review.
+Updated: 2026-10-30. Branch `feat/native-macos-app`. Status: merged (#7).
 Dependency 04 is merged, and so is task 05: the app uses the real SSH session,
 and its tests use a fake. Upstream remains the unmodified pinned
 `58c742452ded3f10a2ce61f60eb4845f18205e29` (`gliff-server 0.4.1`).

@@ -85,7 +85,11 @@ GATES = [
     ("ssh-session", "SSH process security, startup deadlines and lifecycle tests", True,
      "macos", [["cargo", "test", "--locked", "-p", "gliff-mac-core", "ssh::"],
                ["cargo", "test", "--locked", "-p", "gliff-client-core", "deadline_tests"]]),
-    ("video-decode", "VideoToolbox Single420 decode against fixtures", False, "planned:07", []),
+    ("video-decode", "VideoToolbox Single420 decode and Metal conversion against fixtures",
+     True, "macos",
+     [["scripts/test-app.sh"] + ["-only-testing:GliffMacTests/" + suite for suite in (
+         "AccessUnitTests", "FrameGeometryTests", "H264DecoderTests", "RemoteSurfaceTests",
+         "LiveSessionTests")]]),
     ("metal-chroma", "Dual420 Metal recombination against the reference", False, "planned:08",
      []),
     ("remote-input", "Keyboard/pointer mapping and escape shortcut", False, "planned:09", []),

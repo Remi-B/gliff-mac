@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-30",
+  "client": {
+    "os": "macOS 27.0.1",
+    "arch": "arm64",
+    "xcode": "Xcode 27.1",
+    "build": "scripts/build-app.sh (universal Debug, ad-hoc signed)",
+    "launch": "Finder Apple event (osascript: Finder open), GliffDebugAutoConnect"
+  },
+  "server": {
+    "host": "omarchy-mbp.local",
+    "source_sha": "58c742452ded3f10a2ce61f60eb4845f18205e29",
+    "version": "gliff-server 0.4.1",
+    "arguments": ["--stdio", "--headless"],
+    "pipeline": "server default",
+    "chroma": "Single420"
+  },
+  "timeline": {
+    "connecting": "08:55:26.339",
+    "awaiting_video": "08:55:37.561",
+    "streaming": "08:55:37.568 (1920x1080)",
+    "decoder_session": "08:55:37.692 (1920x1080, hardware)",
+    "quit": "09:08:59.425",
+    "sessions_ended_cleanly": "09:08:59.552"
+  },
+  "bridge": {
+    "frames_delivered": 6570,
+    "frames_dropped": 0,
+    "acks_sent": 6570,
+    "keyframe_requests": 0
+  },
+  "decoder": {
+    "decoded": 6570,
+    "failed": 0,
+    "discarded": 0,
+    "presented": 6562,
+    "replaced_before_display": 8,
+    "decoder_sessions": 1,
+    "hardware_accelerated": true
+  },
+  "after_quit": {
+    "app_process": "gone",
+    "local_ssh_children": 0,
+    "remote_gliff_server": 0,
+    "remote_monitors": ["eDP-1"]
+  },
+  "visual_check": "Remote headless desktop and lock screen visible, sharp, expected colours, letterboxed through window resize and full screen (checked by the user; no screenshot: the shell has no screen-recording permission)"
+}

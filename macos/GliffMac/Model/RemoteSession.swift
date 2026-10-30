@@ -1,4 +1,5 @@
 import GliffCore
+import os
 
 /// One remote session as the view model sees it. `LiveSession` wraps the
 /// bridge's `GliffSession`; tests substitute a fake.
@@ -9,6 +10,12 @@ protocol RemoteSession: AnyObject {
     func start(events: @escaping @MainActor @Sendable (SessionEvent) -> Void) throws
     /// Idempotent and non-blocking; `.ended` follows once teardown completes.
     func cancel()
+    /// Where the session's decoded pictures appear; `nil` without a decoder.
+    var videoDisplay: VideoDisplay? { get }
+}
+
+extension RemoteSession {
+    var videoDisplay: VideoDisplay? { nil }
 }
 
 /// Builds sessions for the view model.
@@ -25,31 +32,55 @@ struct LiveSessionFactory: SessionFactory {
     }
 }
 
-/// Adapts `GliffSession` and `SessionRelay` to `RemoteSession`.
+/// Adapts `GliffSession` and `SessionRelay` to `RemoteSession`, with the
+/// VideoToolbox decoder on the video side.
 ///
-/// Until the VideoToolbox decoder exists (task 07), frames go to a placeholder
-/// sink that consumes them without decoding: it reports each one so the server
-/// keeps pacing, and the surface states that video display is not available.
+/// Configurations and frames go from the bridge's delivery thread straight
+/// to the decoder, which reports each frame to the session from VideoToolbox's
+/// output callback: acknowledgements never wait for the main thread or the
+/// window. The decoder is invalidated on cancel and when the session ends.
 final class LiveSession: RemoteSession {
     private let session: GliffSession
+    private let decoder: H264Decoder
+
+    var videoDisplay: VideoDisplay? { decoder.display }
 
     init(target: ConnectionTarget, options: SessionOptions) throws {
-        session = try GliffSession(target: target, options: options)
+        let session = try GliffSession(target: target, options: options)
+        self.session = session
+        decoder = H264Decoder(display: VideoDisplay()) { [weak session] frameID, outcome in
+            // `NotRunning` once the session ended: nothing left to acknowledge.
+            try? session?.reportDecode(frameId: frameID, outcome: outcome)
+        }
     }
 
     func start(events: @escaping @MainActor @Sendable (SessionEvent) -> Void) throws {
+        let decoder = self.decoder
         let relay = SessionRelay(
-            video: { [weak session] item in
-                // The placeholder consumes the frame; no pixels are produced.
-                if case .frame(let frame) = item {
-                    try? session?.reportDecode(frameId: frame.frameId, outcome: .decoded)
+            video: { item in decoder.handle(item) },
+            events: { [weak self] event in
+                if case .ended = event {
+                    decoder.invalidate()
+                    self?.logSummary()
                 }
-            },
-            events: events)
+                events(event)
+            })
         try session.start(delegate: relay)
     }
 
     func cancel() {
         session.cancel()
+        decoder.invalidate()
+    }
+
+    /// The bridge's counters: frames delivered, acknowledgements, keyframe requests.
+    var stats: SessionStats { session.stats() }
+
+    /// Counters only: no host, user or picture content.
+    private func logSummary() {
+        let s = stats
+        let v = decoder.display.diagnostics
+        Logger(subsystem: "com.remi-b.gliff-mac", category: "video").info(
+            "session video: delivered \(s.framesDelivered) dropped \(s.framesDropped) acks \(s.acksSent) keyframe requests \(s.keyframeRequests); decoded \(v.decoded) failed \(v.failed) discarded \(v.discarded) presented \(v.presented) replaced \(v.droppedBeforeDisplay) out of order \(v.outOfOrder) decoders \(v.decoderSessions) hardware \(v.hardwareAccelerated.map { $0 ? "yes" : "no" } ?? "unknown", privacy: .public)")
     }
 }
