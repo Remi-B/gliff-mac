@@ -1,0 +1,66 @@
+[
+  {
+    "source": "com.apple.keylayout.ABC",
+    "keyboard_type": 40,
+    "compiled": true,
+    "symbols_checked": 196,
+    "dead_compositions_checked": 5,
+    "differences": []
+  },
+  {
+    "source": "com.apple.keylayout.ABC",
+    "keyboard_type": 41,
+    "compiled": true,
+    "symbols_checked": 196,
+    "dead_compositions_checked": 5,
+    "differences": []
+  },
+  {
+    "source": "com.apple.keylayout.French",
+    "keyboard_type": 40,
+    "compiled": true,
+    "symbols_checked": 196,
+    "dead_compositions_checked": 5,
+    "differences": []
+  },
+  {
+    "source": "com.apple.keylayout.French",
+    "keyboard_type": 41,
+    "compiled": true,
+    "symbols_checked": 196,
+    "dead_compositions_checked": 5,
+    "differences": []
+  },
+  {
+    "source": "com.apple.keylayout.French-PC",
+    "keyboard_type": 40,
+    "compiled": true,
+    "symbols_checked": 196,
+    "dead_compositions_checked": 8,
+    "differences": []
+  },
+  {
+    "source": "com.apple.keylayout.French-PC",
+    "keyboard_type": 41,
+    "compiled": true,
+    "symbols_checked": 196,
+    "dead_compositions_checked": 8,
+    "differences": []
+  },
+  {
+    "source": "com.apple.keylayout.US",
+    "keyboard_type": 40,
+    "compiled": true,
+    "symbols_checked": 196,
+    "dead_compositions_checked": 5,
+    "differences": []
+  },
+  {
+    "source": "com.apple.keylayout.US",
+    "keyboard_type": 41,
+    "compiled": true,
+    "symbols_checked": 196,
+    "dead_compositions_checked": 5,
+    "differences": []
+  }
+]

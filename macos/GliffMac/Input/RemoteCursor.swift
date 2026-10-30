@@ -6,7 +6,8 @@ import GliffCore
 /// Like upstream's client, the remote shape replaces the local pointer over
 /// the surface while input is captured: the Mac draws it at the real pointer
 /// position with no network latency, and the remote position follows through
-/// absolute motion events, so `CursorPos` is not drawn. A shape with no
+/// absolute motion events. When capture is released the surface draws a real
+/// shape at CursorPos instead. A shape with no
 /// visible pixels (Hyprland shares fully transparent or flat images, see
 /// upstream's `hardware-quirks.md`) means "no image": a headless session
 /// then hides the local pointer, because its pictures already contain the
@@ -40,14 +41,12 @@ struct RemoteCursorImage: Equatable, Sendable {
 
     /// Some pixel is not transparent and not all pixels are the same.
     var hasVisibleShape: Bool {
-        pixels.withUnsafeBytes { raw in
-            let words = raw.bindMemory(to: UInt32.self)
-            guard let first = words.first else { return false }
+        pixels.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
             var opaque = false
             var uniform = true
-            for word in words {
-                if word >> 24 != 0 { opaque = true }
-                if word != first { uniform = false }
+            for offset in stride(from: 0, to: raw.count, by: 4) {
+                if raw[offset + 3] != 0 { opaque = true }
+                if (0..<4).contains(where: { raw[offset + $0] != raw[$0] }) { uniform = false }
                 if opaque && !uniform { return true }
             }
             return false
@@ -84,7 +83,7 @@ enum RemoteCursor: Equatable {
         }
     }
 
-    @MainActor private static func cursor(_ image: RemoteCursorImage, pointsPerPixel: CGFloat) -> NSCursor? {
+    static func cgImage(_ image: RemoteCursorImage) -> CGImage? {
         guard let provider = CGDataProvider(data: image.pixels as CFData),
             let cgImage = CGImage(
                 width: image.width, height: image.height, bitsPerComponent: 8, bitsPerPixel: 32,
@@ -93,6 +92,11 @@ enum RemoteCursor: Equatable {
                     | CGImageAlphaInfo.premultipliedFirst.rawValue),
                 provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)
         else { return nil }
+        return cgImage
+    }
+
+    @MainActor private static func cursor(_ image: RemoteCursorImage, pointsPerPixel: CGFloat) -> NSCursor? {
+        guard let cgImage = cgImage(image) else { return nil }
         let scale = pointsPerPixel > 0 ? pointsPerPixel : 1
         let size = NSSize(width: CGFloat(image.width) * scale, height: CGFloat(image.height) * scale)
         let hotSpot = NSPoint(x: CGFloat(image.hotX) * scale, y: CGFloat(image.hotY) * scale)

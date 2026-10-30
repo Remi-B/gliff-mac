@@ -1,7 +1,7 @@
 # 09 — implement-remote-input
 
-Status: in review; implemented and covered by tests, live Hyprland checks
-pending. Dependencies: [07](../07-decode-and-display-h264/README.md).
+Status: in review; implemented with local tests and a native headless input
+smoke. Interactive live and hardware acceptance remains open. Dependencies: [07](../07-decode-and-display-h264/README.md).
 
 Results: [implementation record](implementation-record.md).
 
@@ -53,9 +53,10 @@ keyboard-layout policy and reliable local control release.
 - Acceptance evidence distinguishes physical-key support from text/IME support;
   keyboard limitations are visible before a user relies on the connection.
 
-Live checks (US/French text, dead keys, chords, layout switch, scaled output,
-scrolling, drag outside, focus transitions and the keymap compiled on the
-server), ANSI/JIS hardware and Intel are not verified yet; the record lists them.
+Native headless US/French text, punctuation, dead accents and layout switching
+passed through the real bridge. Interactive capture/focus/fullscreen, visual
+scroll/drag, a scaled live output, physical ANSI/ISO/JIS hardware and Intel remain
+unverified; the implementation record distinguishes those from automated checks.
 
 From task 06: `SessionController.isCapturingInput`, the ⇧⎋ release
 command (`Preferences.releaseShortcut`), the capture preference and focus-loss

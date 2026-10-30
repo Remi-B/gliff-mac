@@ -70,6 +70,10 @@ final class SessionController: ObservableObject {
     @Published private(set) var keyboardLayout: KeyboardLayout?
     /// The pointer the surface shows while input is captured.
     @Published private(set) var remoteCursor = RemoteCursor.hidden
+    @Published private(set) var remoteCursorPosition: CursorPosition?
+    /// Capture-buffer pixels per logical output point (HelloAck), distinct
+    /// from the stream's effective scale after encoder downscaling.
+    @Published private(set) var cursorOutputScale: CGFloat = 1
 
     /// The settings of the current or last attempt, used by reconnect.
     private(set) var activeRequest: ConnectionRequest?
@@ -186,7 +190,7 @@ final class SessionController: ObservableObject {
     func captureInput() {
         guard isStreaming, let forwarder else { return }
         keyboardLayout = forwarder.syncLayout()
-        isCapturingInput = true
+        isCapturingInput = !forwarder.failed
     }
 
     /// The release shortcut, focus loss and every phase change end capture,
@@ -209,15 +213,18 @@ final class SessionController: ObservableObject {
         serverMessage = nil
         hello = nil
         setCursorImage(nil)
+        remoteCursorPosition = nil
+        cursorOutputScale = 1
         do {
             let session = try factory.makeSession(for: request)
             currentSession = try registry.start(session) { [weak self] id, event in
                 self?.handle(event, from: id)
             }
             videoDisplay = session.videoDisplay
-            forwarder = InputForwarder(layout: session.keyboardLayout, currentLayout: currentLayout) {
-                [weak session] in session?.send($0) ?? false
-            }
+            forwarder = InputForwarder(
+                layout: session.keyboardLayout, currentLayout: currentLayout,
+                onFailure: { [weak self] in self?.inputFailed() },
+                sink: { [weak session] in session?.send($0) ?? false })
             keyboardLayout = session.keyboardLayout ?? currentLayout()
             self.phase = phase
         } catch {
@@ -225,6 +232,13 @@ final class SessionController: ObservableObject {
             videoDisplay = nil
             self.phase = .failed(SessionFailure(starting: error))
         }
+    }
+
+    private func inputFailed() {
+        endCurrentSession()
+        phase = .failed(SessionFailure(
+            title: "Input could not be delivered",
+            message: "The session was disconnected to release remote keys and buttons. Reconnect to continue."))
     }
 
     private func endCurrentSession() {
@@ -246,6 +260,7 @@ final class SessionController: ObservableObject {
         switch event {
         case .connected(let hello):
             self.hello = hello
+            cursorOutputScale = CGFloat(hello.outputs.first { $0.name == hello.output }?.scaleMilli ?? 1000) / 1000
             setCursorImage(cursorImage)
             if let request = activeRequest { recents.remember(request) }
             advance(to: .awaitingVideo)
@@ -260,9 +275,8 @@ final class SessionController: ObservableObject {
         case .cursorShape(let shape):
             // A malformed shape keeps the previous one.
             if let image = RemoteCursorImage(shape) { setCursorImage(image) }
-        case .cursorPosition:
-            // The local pointer is the remote one's position (`RemoteCursor`).
-            break
+        case .cursorPosition(let position):
+            remoteCursorPosition = position
         case .ended(let end):
             releaseInput()
             currentSession = nil

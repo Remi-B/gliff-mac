@@ -41,6 +41,18 @@ struct PointerMapping: Equatable {
         return rect.width / CGFloat(frame.width) / backingScale
     }
 
+    /// Capture-buffer pixels to surface points. CursorPos is in the full
+    /// capture buffer's coordinates, not the downscaled H.264 stream.
+    func cursorPoint(_ point: CGPoint, outputScale: CGFloat) -> CGPoint? {
+        let rect = fittedRect
+        guard rect.width > 0, rect.height > 0, outputScale > 0,
+            point.x.isFinite, point.y.isFinite else { return nil }
+        let ratio = CGFloat(remoteScale) / outputScale
+        return CGPoint(
+            x: (rect.minX + point.x * ratio * rect.width / CGFloat(frame.width)) / backingScale,
+            y: (rect.minY + point.y * ratio * rect.height / CGFloat(frame.height)) / backingScale)
+    }
+
     /// `point` in a flipped view (origin top left) as remote logical
     /// coordinates, clamped to the output; `nil` before there is a picture.
     func remotePoint(_ point: CGPoint) -> CGPoint? {

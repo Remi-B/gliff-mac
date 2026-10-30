@@ -19,9 +19,10 @@ final class FakeSession: RemoteSession {
     /// Input the session accepted, in order; nothing after `.ended`.
     private(set) var inputs: [InputEvent] = []
     private var ended = false
+    var acceptsInput = true
 
     func send(_ input: InputEvent) -> Bool {
-        guard !ended else { return false }
+        guard !ended, acceptsInput else { return false }
         inputs.append(input)
         return true
     }

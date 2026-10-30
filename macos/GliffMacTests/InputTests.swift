@@ -95,6 +95,35 @@ import Testing
         #expect(text.hasSuffix("};\n"))
     }
 
+    @Test func unicodeAndDeadSymbolsAreEncodedWithoutXKBInjection() {
+        #expect(MacKeymap.symbol("é", dead: false) == "U00E9")
+        #expect(MacKeymap.symbol("\"", dead: false) == "U0022")
+        #expect(MacKeymap.symbol("^", dead: true) == "dead_circumflex")
+        #expect(MacKeymap.symbol("¨", dead: true) == "dead_diaeresis")
+        #expect(MacKeymap.symbol("ab", dead: false) == nil)
+        #expect(MacKeymap.symbol("?", dead: true) == nil)
+    }
+
+    @MainActor @Test func supportedAppleLayoutsDeriveBothHardwareFamilies() throws {
+        let sources = TISCreateInputSourceList(nil, true).takeRetainedValue() as! [TISInputSource]
+        var found: Set<String> = []
+        for source in sources {
+            guard let ptr = TISGetInputSourceProperty(source, kTISPropertyInputSourceID) else { continue }
+            let id = Unmanaged<CFString>.fromOpaque(ptr).takeUnretainedValue() as String
+            guard KeyboardLayout.supported[id] != nil else { continue }
+            // Apple keyboard types 40 (ANSI), 41 (ISO). No physical hardware
+            // is claimed: this verifies Apple's translation data only.
+            for type: UInt32 in [40, 41] {
+                let text = try #require(MacKeymap.overrides(source: source, keyboardType: type), "\(id) / \(type)")
+                #expect(text.contains("key <AD01>"))
+                #expect(text.contains("key <TLDE>"))
+                if id == "com.apple.keylayout.French" { #expect(text.contains("dead_circumflex")) }
+            }
+            found.insert(id)
+        }
+        #expect(found == Set(KeyboardLayout.supported.keys))
+    }
+
     @MainActor @Test func theCurrentSourceIsAKeyboardLayout() {
         let layout = KeyboardLayout.current()
         #expect(!layout.sourceID.isEmpty)
@@ -156,6 +185,17 @@ import Testing
         let noStream = PointerMapping(
             viewSize: CGSize(width: 100, height: 100), backingScale: 2, frame: FrameGeometry(width: 0, height: 0))
         #expect(noStream.remotePoint(.zero) == nil)
+    }
+
+    @Test func cursorPositionsUseCapturePixelsAcrossStreamDownscaling() throws {
+        let mapping = PointerMapping(viewSize: CGSize(width: 1000, height: 600), backingScale: 2,
+            frame: FrameGeometry(width: 1920, height: 1080, scaleMilli: 1000))
+        // Source is 3840×2160 at scale 2; stream has been downscaled 1/2.
+        let point = try #require(mapping.cursorPoint(CGPoint(x: 1920, y: 1080), outputScale: 2))
+        #expect(abs(point.x - 500) < 0.001)
+        #expect(abs(point.y - 299.75) < 0.001)
+        #expect(mapping.cursorPoint(.zero, outputScale: 0) == nil)
+        #expect(mapping.cursorPoint(CGPoint(x: Double.nan, y: 0), outputScale: 1) == nil)
     }
 
     @Test func buttonsAreEvdevCodesNotABitmask() {
@@ -292,11 +332,48 @@ final class LayoutSwitch {
         #expect(sent == [.keymap(keymap: KeyboardLayout.XKB.us.keymap)])
     }
 
+    @Test func releasingDuringAScrollStopsItsActiveAxesOnce() {
+        forwarder.scroll([.scroll(axis: .vertical, value: 3, discrete: nil, stop: false)])
+        forwarder.releaseAll()
+        forwarder.releaseAll()
+        #expect(sent == [
+            .scroll(axis: .vertical, value: 3, discrete: nil, stop: false),
+            .scroll(axis: .vertical, value: 0, discrete: nil, stop: true),
+        ])
+    }
+
+    @Test func aRejectedKeymapStopsKeysAndCancelsOnce() {
+        var failures = 0
+        let f = InputForwarder(layout: layouts.current, currentLayout: { self.layouts.current },
+            onFailure: { failures += 1 }, sink: log.accept)
+        layouts.select("com.apple.keylayout.French")
+        log.accepting = false
+        f.keyDown(UInt16(kVK_ANSI_A), isRepeat: false)
+        log.accepting = true
+        f.keyDown(UInt16(kVK_ANSI_B), isRepeat: false)
+        f.releaseAll()
+        #expect(failures == 1 && f.failed)
+        #expect(f.pressedKeys.isEmpty)
+        #expect(f.layout?.xkb == .usMac)
+        #expect(sent == [.keymap(keymap: KeyboardLayout.XKB.frenchMac.keymap)])
+    }
+
+    @Test func aRejectedReleaseStopsTheSession() {
+        var failures = 0
+        let f = InputForwarder(layout: layouts.current, currentLayout: { self.layouts.current },
+            onFailure: { failures += 1 }, sink: log.accept)
+        f.keyDown(UInt16(kVK_ANSI_A), isRepeat: false)
+        log.accepting = false
+        f.releaseAll()
+        #expect(failures == 1 && f.failed && f.pressedKeys.isEmpty)
+    }
+
     @Test func refusedEventsAreCounted() {
         log.accepting = false
         forwarder.move(to: CGPoint(x: 1, y: 2))
         forwarder.scroll([.scroll(axis: .vertical, value: 1, discrete: nil, stop: false)])
-        #expect(forwarder.dropped == 2)
+        #expect(forwarder.dropped == 1)
+        #expect(forwarder.failed)
     }
 }
 
@@ -358,7 +435,7 @@ final class EventLog {
 /// monitor's filter and the release shortcut.
 @MainActor
 @Suite(.serialized) struct SurfaceInputTests {
-    let window = NSWindow(
+    let window = InputTestWindow(
         contentRect: NSRect(x: 0, y: 0, width: 400, height: 300), styleMask: [.titled], backing: .buffered,
         defer: false)
     let surface: RemoteSurface.SurfaceView
@@ -377,6 +454,8 @@ final class EventLog {
             pixelBuffer: try #require(buffer), geometry: FrameGeometry(width: 800, height: 600, scaleMilli: 2000),
             color: .reference, generation: 1, frameID: 1, ptsMicros: 0))
         surface.display = display
+        surface.needsLayout = true
+        surface.layoutSubtreeIfNeeded()
         let layouts = LayoutSwitch()
         forwarder = InputForwarder(
             layout: layouts.current, currentLayout: { layouts.current }, hardware: { .ansi }, sink: log.accept)
@@ -408,6 +487,7 @@ final class EventLog {
     }
 
     func capture() {
+        window.testIsKey = true
         surface.input = forwarder
         surface.isCapturing = true
         window.makeFirstResponder(surface)
@@ -454,7 +534,8 @@ final class EventLog {
         window.makeFirstResponder(nil)
         #expect(!surface.handleKey(key(.keyDown, kVK_ANSI_B)), "another first responder")
         #expect(log.events == [
-            .key(keycode: 30, pressed: true), .key(keycode: 30, pressed: false), .key(keycode: 16, pressed: true),
+            .key(keycode: 30, pressed: true), .key(keycode: 30, pressed: false),
+            .key(keycode: 16, pressed: true), .key(keycode: 16, pressed: false),
         ])
         other.close()
         window.close()
@@ -479,6 +560,67 @@ final class EventLog {
         window.close()
     }
 
+    @Test func mappingStaysWithTheDrawnFrameWhileADrawableIsUnavailable() throws {
+        let previous = try #require(surface.pointerMapping).frame
+        let frame = try #require(display.latest)
+        let renderer = try #require(surface.renderer)
+        renderer.nextDrawable = { _ in nil }
+        display.post(DecodedFrame(pixelBuffer: frame.pixelBuffer,
+            geometry: FrameGeometry(width: 400, height: 300, scaleMilli: 1000),
+            color: .reference, generation: 2, frameID: 2, ptsMicros: 1))
+        surface.needsLayout = true
+        surface.layoutSubtreeIfNeeded()
+        #expect(surface.pointerMapping?.frame == previous)
+        renderer.nextDrawable = { $0.nextDrawable() }
+        surface.needsLayout = true
+        surface.layoutSubtreeIfNeeded()
+        #expect(surface.pointerMapping?.frame == display.latest?.geometry)
+        window.close()
+    }
+
+    @Test func cursorPositionIsDrawnOnlyWhenReleasedAndVisible() throws {
+        let image = try #require(RemoteCursorImage(RemoteCursorTests.shape(
+            [0xFFFF_FFFF, 0xFF00_0000, 0, 0], hot: (1, 1))))
+        surface.remoteCursor = .image(image)
+        surface.cursorOutputScale = 2
+        surface.cursorPosition = CursorPosition(x: 200, y: 100, shapeId: 1, visible: true)
+        #expect(surface.cursorOverlayFrame == CGRect(x: 99.5, y: 49.5, width: 1, height: 1))
+        capture()
+        #expect(surface.cursorOverlayFrame == nil, "NSCursor owns the image during capture")
+        surface.stopCapture()
+        #expect(surface.cursorOverlayFrame != nil)
+        surface.cursorPosition = CursorPosition(x: 200, y: 100, shapeId: 1, visible: false)
+        #expect(surface.cursorOverlayFrame == nil)
+        surface.cursorPosition = CursorPosition(x: 200, y: 100, shapeId: 2, visible: true)
+        #expect(surface.cursorOverlayFrame == nil, "positions cannot use another shape's hotspot")
+        surface.cursorPosition = CursorPosition(x: 200, y: 100, shapeId: 1, visible: true)
+        surface.display = nil
+        #expect(surface.cursorOverlayFrame == nil)
+        window.close()
+    }
+
+    @Test func detachedSurfaceReleasesHeldInput() {
+        capture()
+        forwarder.keyDown(UInt16(kVK_ANSI_A), isRepeat: false)
+        window.contentView = NSView()
+        #expect(!surface.isCapturing && surface.input == nil)
+        #expect(forwarder.pressedKeys.isEmpty)
+        #expect(log.events.suffix(1) == [.key(keycode: 30, pressed: false)])
+        window.close()
+    }
+
+    @Test func inactiveWindowCannotForwardPointerOrKeys() {
+        capture()
+        window.testIsKey = false
+        // A stale SwiftUI input value must not reactivate event routing.
+        surface.input = forwarder
+        surface.isCapturing = true
+        surface.mouseDown(with: mouse(.leftMouseDown, at: .zero))
+        #expect(!surface.handleKey(key(.keyDown, kVK_ANSI_A)))
+        #expect(log.events.isEmpty)
+        window.close()
+    }
+
     @Test func losingFirstResponderReleasesCapture() {
         var released = 0
         surface.onRelease = { released += 1 }
@@ -488,4 +630,11 @@ final class EventLog {
         #expect(!surface.isCapturing)
         window.close()
     }
+}
+
+/// Deterministic key-window state without stealing desktop focus in CI.
+@MainActor
+final class InputTestWindow: NSWindow {
+    var testIsKey = true
+    override var isKeyWindow: Bool { testIsKey }
 }

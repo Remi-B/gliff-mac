@@ -245,6 +245,21 @@ import Testing
         #expect(!controller.isCapturingInput)
     }
 
+    @Test func rejectedInputDisconnectsAndOffersRecovery() throws {
+        controller.connect()
+        factory.last.becomeStreaming()
+        controller.captureInput()
+        let input = try #require(controller.input)
+        input.keyDown(0, isRepeat: false)
+        factory.last.acceptsInput = false
+        input.keyUp(0)
+        #expect(factory.last.cancelCount == 1)
+        #expect(controller.input == nil && !controller.isCapturingInput)
+        guard case .failed(let failure) = controller.phase else { Issue.record("expected failure"); return }
+        #expect(failure.title == "Input could not be delivered")
+        #expect(controller.canReconnect)
+    }
+
     @Test func capturedInputReachesTheSessionAndReleaseLiftsHeldKeys() throws {
         factory.configure = { $0.layout = KeyboardLayout(sourceID: "com.apple.keylayout.US", name: "U.S.") }
         controller.connect()
@@ -304,6 +319,19 @@ import Testing
         controller.captureInput()
         #expect(controller.input == nil)
         #expect(first.inputs.count == count)
+    }
+
+    @Test func cursorPositionVisibilityAndOutputScaleFollowTheSession() {
+        controller.connect()
+        factory.last.emit(.connected(ServerHello(headless: false, output: "scaled",
+            outputs: [OutputInfo(name: "scaled", width: 3840, height: 2160, scaleMilli: 2000)], features: [])))
+        let position = CursorPosition(x: 100, y: 200, shapeId: 1, visible: false)
+        factory.last.emit(.cursorPosition(position))
+        #expect(controller.remoteCursorPosition == position)
+        #expect(controller.cursorOutputScale == 2)
+        controller.disconnect()
+        controller.reconnect()
+        #expect(controller.remoteCursorPosition == nil && controller.cursorOutputScale == 1)
     }
 
     @Test func theRemoteCursorFollowsShapesAndTheSessionKind() throws {

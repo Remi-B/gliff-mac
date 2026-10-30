@@ -60,10 +60,17 @@ struct KeyboardLayout: Equatable, Sendable {
         isSupported = match != nil
     }
 
-    var keymap: String { xkb.keymap }
+    /// Printable symbols derived from the supported macOS source.
+    var symbolOverrides = ""
+    var keymap: String {
+        guard !symbolOverrides.isEmpty else { return xkb.keymap }
+        return xkb.keymap.replacingOccurrences(
+            of: "include \"pc+\(xkb.symbols)+inet(evdev)\"",
+            with: "include \"pc+\(xkb.symbols)+inet(evdev)+level3(ralt_switch)\"\n\(symbolOverrides)")
+    }
 
-    /// macOS keyboard layouts with an equivalent XKB layout. ABC is the
-    /// U.S. layout with different Option characters; both use `us(mac)`.
+    /// Supported Apple sources. The XKB variant supplies standard behavior;
+    /// MacKeymap overrides printable symbols with the actual Apple data.
     static let supported: [String: XKB] = [
         "com.apple.keylayout.US": .usMac,
         "com.apple.keylayout.ABC": .usMac,
@@ -74,11 +81,12 @@ struct KeyboardLayout: Equatable, Sendable {
     /// Sent for every other source: the server's own default layout.
     static let fallback = XKB.us
 
-    /// The keyboard layout of the current input source. Input methods
-    /// (Pinyin, Kotoeri, …) report the layout they type with; their
-    /// composed text is not sent, only physical keys.
+    /// Layouts and hardware types are cached; source IDs outside the
+    /// supported set (including input methods) visibly fall back to U.S.
+    @MainActor private static var cache: [String: KeyboardLayout] = [:]
+
     @MainActor static func current() -> KeyboardLayout {
-        guard let source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue() else {
+        guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue() else {
             return KeyboardLayout(sourceID: "", name: "Unknown")
         }
         func string(_ key: CFString) -> String? {
@@ -86,7 +94,21 @@ struct KeyboardLayout: Equatable, Sendable {
             return Unmanaged<CFString>.fromOpaque(value).takeUnretainedValue() as String
         }
         let id = string(kTISPropertyInputSourceID) ?? ""
-        return KeyboardLayout(sourceID: id, name: string(kTISPropertyLocalizedName) ?? id)
+        let type = UInt32(LMGetKbdType())
+        let cacheKey = "\(id):\(type)"
+        if let cached = cache[cacheKey] { return cached }
+        var result = KeyboardLayout(sourceID: id, name: string(kTISPropertyLocalizedName) ?? id)
+        if result.isSupported {
+            if let overrides = MacKeymap.overrides(source: source, keyboardType: type) {
+                result.symbolOverrides = overrides
+            } else {
+                // Never silently claim parity when derivation failed.
+                result.isSupported = false
+                result.xkb = fallback
+            }
+        }
+        cache[cacheKey] = result
+        return result
     }
 
     /// Posted by macOS when the selected keyboard input source changes.

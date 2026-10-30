@@ -308,3 +308,17 @@ user SSH files are modified. Agent authentication is supported; forwarding the
 agent or X11 connection to the server is disabled. Proxy helpers belong to the
 session's process group and are terminated during cancellation. Custom helpers
 that deliberately daemonize into a separate session remain trusted user config.
+
+### Keyboard layout validation
+
+Task 09 derives supported printable XKB symbols from Apple's Unicode layout data,
+including dead accents; stock xkeyboard-config Mac variants differ from macOS.
+Right Option supplies symbols (AltGr); left Option remains Alt for shortcuts.
+Export all four supported sources for ANSI/ISO translation data with
+`scripts/export-keyboard-layouts.sh`, then run
+`python3 scripts/check-keyboard-layouts.py build/input-layouts/layouts.json --ssh USER@HOST --identity PATH`
+against Linux with libxkbcommon. This read-only check compiles each production map,
+compares printable levels and tests dead-key composition without accessing the
+compositor, GPU, input or server. It does not replace physical keyboard/live UI
+acceptance. The [task record](09-implement-remote-input/implementation-record.md)
+lists current behavior, reserved shortcuts and remaining checks.
