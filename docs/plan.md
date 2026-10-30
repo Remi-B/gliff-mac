@@ -99,9 +99,8 @@ as the initial baseline, then validate each subsequent pin explicitly.
 ## Ordered tasks
 
 Each task has scope, dependencies, deliverables, and acceptance criteria in its
-folder. Tasks 01–07 are **merged**, including local macOS and live-server validation;
-task 08 is **implemented, CPU live acceptance blocked**; tasks 09–13 are **planned**
-on this branch. The order prioritizes repository ownership,
+folder. Tasks 01–08 are **merged**, with CPU Dual420 acceptance still blocked;
+task 09 is **in review** and tasks 10–13 are **planned**. The order prioritizes repository ownership,
 compatibility, and build risks before UI breadth.
 
 | # | Task | Depends on | Completion evidence |
