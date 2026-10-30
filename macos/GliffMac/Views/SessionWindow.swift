@@ -54,6 +54,18 @@ struct SessionToolbar: ToolbarContent {
 
     var body: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
+            if controller.isStreaming {
+                Button {
+                    if controller.isCapturingInput { controller.releaseInput() } else { controller.captureInput() }
+                } label: {
+                    Label(
+                        controller.isCapturingInput ? "Release Input" : "Capture Input",
+                        systemImage: controller.isCapturingInput ? "keyboard.fill" : "keyboard")
+                }
+                .help(controller.isCapturingInput
+                    ? "Give the keyboard and pointer back to this Mac (\(Preferences.releaseShortcutDescription))"
+                    : "Send the keyboard and pointer to the remote desktop")
+            }
             if controller.canReconnect {
                 Button {
                     controller.reconnect()

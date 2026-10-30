@@ -10,12 +10,14 @@ import Testing
     let factory = FakeSessionFactory()
     let registry = SessionRegistry()
     let defaults = TestDefaults()
+    let layouts = LayoutSwitch()
     let controller: SessionController
 
     init() {
+        let layouts = layouts
         controller = SessionController(
             factory: factory, registry: registry, recents: RecentConnections(defaults: defaults.store),
-            request: ConnectionRequest(host: "desk", user: "remi"))
+            request: ConnectionRequest(host: "desk", user: "remi"), currentLayout: { layouts.current })
     }
 
     @Test func connectsThroughEachStepToStreaming() throws {
@@ -241,6 +243,87 @@ import Testing
         controller.captureInput()
         factory.last.emit(.ended(.closed))
         #expect(!controller.isCapturingInput)
+    }
+
+    @Test func capturedInputReachesTheSessionAndReleaseLiftsHeldKeys() throws {
+        factory.configure = { $0.layout = KeyboardLayout(sourceID: "com.apple.keylayout.US", name: "U.S.") }
+        controller.connect()
+        factory.last.becomeStreaming()
+        #expect(controller.input == nil, "nothing is forwarded before capture")
+        #expect(controller.keyboardLayout?.isSupported == true)
+        controller.captureInput()
+        let input = try #require(controller.input)
+        input.flagsChanged(UInt16(0x37), modifierFlags: 0x8)
+        input.keyDown(UInt16(0x0C), isRepeat: false)
+        input.button(0, pressed: true)
+        controller.releaseInput()
+        #expect(controller.input == nil)
+        #expect(factory.last.inputs == [
+            .key(keycode: 125, pressed: true), .key(keycode: 16, pressed: true),
+            .pointerButton(button: 0x110, pressed: true),
+            .key(keycode: 16, pressed: false), .key(keycode: 125, pressed: false),
+            .pointerButton(button: 0x110, pressed: false),
+        ])
+    }
+
+    /// The first key of a session without a keymap, or after a switch,
+    /// follows the current layout's keymap; a switch is sent at once.
+    @Test func layoutSwitchesSendTheKeymapFirst() throws {
+        controller.connect()
+        factory.last.becomeStreaming()
+        layouts.select("com.apple.keylayout.French")
+        controller.keyboardLayoutChanged()
+        #expect(controller.keyboardLayout?.xkb == .frenchMac)
+        #expect(factory.last.inputs == [.keymap(keymap: KeyboardLayout.XKB.frenchMac.keymap)])
+        controller.captureInput()
+        try #require(controller.input).keyDown(UInt16(0x0C), isRepeat: false)
+        layouts.select("com.apple.keylayout.German")
+        controller.keyboardLayoutChanged()
+        #expect(controller.keyboardLayout?.isSupported == false)
+        #expect(factory.last.inputs.suffix(2) == [
+            .key(keycode: 16, pressed: true), .keymap(keymap: KeyboardLayout.XKB.us.keymap),
+        ])
+    }
+
+    /// A new session starts with nothing held, and the old one gets nothing.
+    @Test func reconnectAndEndForgetHeldInput() throws {
+        controller.connect()
+        factory.last.becomeStreaming()
+        controller.captureInput()
+        try #require(controller.input).keyDown(UInt16(0x00), isRepeat: false)
+        let first = factory.last
+        controller.reconnect()
+        #expect(first.inputs.last == .key(keycode: 30, pressed: false))
+        let count = first.inputs.count
+        factory.last.becomeStreaming()
+        #expect(controller.input == nil)
+        controller.captureInput()
+        try #require(controller.input).button(1, pressed: true)
+        factory.last.emit(.ended(.closed))
+        #expect(controller.input == nil && !controller.isCapturingInput)
+        controller.captureInput()
+        #expect(controller.input == nil)
+        #expect(first.inputs.count == count)
+    }
+
+    @Test func theRemoteCursorFollowsShapesAndTheSessionKind() throws {
+        let visible = RemoteCursorTests.shape([0xFFFF_FFFF, 0xFF00_0000, 0, 0])
+        let flat = RemoteCursorTests.shape([0, 0, 0, 0])
+        controller.connect()
+        #expect(controller.remoteCursor == .hidden)
+        factory.last.emit(.connected(ServerHello(headless: false, output: "DP-1", outputs: [], features: [])))
+        #expect(controller.remoteCursor == .arrow, "a mirrored output's pictures have no cursor")
+        factory.last.emit(.cursorShape(visible))
+        #expect(controller.remoteCursor == .image(try #require(RemoteCursorImage(visible))))
+        // A malformed shape keeps the last good one.
+        factory.last.emit(.cursorShape(CursorShape(id: 2, width: 4, height: 4, hotX: 9, hotY: 0, argb: Data())))
+        #expect(controller.remoteCursor == .image(try #require(RemoteCursorImage(visible))))
+        factory.last.emit(.cursorShape(flat))
+        #expect(controller.remoteCursor == .arrow)
+        controller.reconnect()
+        factory.last.emit(.connected(.sample))
+        factory.last.emit(.cursorShape(flat))
+        #expect(controller.remoteCursor == .hidden, "headless pictures carry the cursor")
     }
 
     @Test func onlyConnectedDestinationsAreRemembered() {

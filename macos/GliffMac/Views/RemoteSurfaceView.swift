@@ -14,8 +14,10 @@ struct RemoteSurfaceView: View {
                 RemoteSurface(
                     display: controller.videoDisplay,
                     isCapturing: controller.isCapturingInput,
+                    input: controller.input,
+                    cursor: controller.remoteCursor,
                     onCapture: { if captureInput { controller.captureInput() } },
-                    onFocusLost: { controller.releaseInput() }
+                    onRelease: { controller.releaseInput() }
                 )
                 .overlay { overlay(video) }
                 .accessibilityElement()
@@ -28,8 +30,7 @@ struct RemoteSurfaceView: View {
         }
     }
 
-    /// Shown until the first picture, and while input is captured, since
-    /// keys and the pointer are not forwarded yet (task 09).
+    /// Shown until the first picture.
     @ViewBuilder private func overlay(_ video: VideoDisplay.Diagnostics?) -> some View {
         let waiting = !info.displaysVideo || (video?.presented ?? 0) == 0
         VStack(spacing: 8) {
@@ -46,14 +47,6 @@ struct RemoteSurfaceView: View {
                     .font(.title3)
                 Text(info.displaysVideo ? "Waiting for the first picture…" : "This session does not display video.")
                     .foregroundStyle(.secondary)
-            }
-            if controller.isCapturingInput {
-                Text("Input capture is on, but keys and pointer are not sent yet. "
-                    + "Press \(Preferences.releaseShortcutDescription) to release.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .padding(8)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
             }
         }
         .multilineTextAlignment(.center)
@@ -88,6 +81,9 @@ struct RemoteSurfaceView: View {
                     .lineLimit(1)
             }
             Spacer()
+            if let layout = controller.keyboardLayout {
+                keyboardLabel(layout)
+            }
             if controller.isCapturingInput {
                 Text("Release input: \(Preferences.releaseShortcutDescription)")
             } else {
@@ -100,6 +96,21 @@ struct RemoteSurfaceView: View {
         .padding(.vertical, 6)
     }
 
+    /// The layout the remote types with, visible before input is captured:
+    /// physical keys only, and a warning when the remote falls back to U.S.
+    @ViewBuilder private func keyboardLabel(_ layout: KeyboardLayout) -> some View {
+        if layout.isSupported {
+            Label(layout.name, systemImage: "keyboard")
+                .help("Keys are sent as physical keys with the \(layout.xkb.description) layout on the remote. "
+                    + "Input methods, dictation and the emoji picker are not sent.")
+        } else {
+            Label("\(layout.name): U.S. keys", systemImage: "keyboard.badge.exclamationmark")
+                .foregroundStyle(.orange)
+                .help("The \(layout.name) input source has no matching remote layout yet: "
+                    + "keys type as on a U.S. keyboard. U.S., ABC, French and French – PC are supported.")
+        }
+    }
+
     private func accessibilityValue(_ video: VideoDisplay.Diagnostics?) -> String {
         var parts = ["\(info.width) by \(info.height)"]
         switch (info.displaysVideo, video) {
@@ -110,18 +121,25 @@ struct RemoteSurfaceView: View {
         }
         if info.reducedChroma { parts.append("reduced colour") }
         parts.append(controller.isCapturingInput ? "input captured" : "input not captured")
+        if let layout = controller.keyboardLayout {
+            parts.append(layout.isSupported ? "keyboard \(layout.name)" : "keyboard \(layout.name) not supported, U.S. keys")
+        }
         return parts.joined(separator: ", ")
     }
 }
 
-/// The AppKit view that shows the decoded pictures in a Metal layer and will
-/// receive focused native input (task 09). Clicking it requests input
-/// capture; losing first responder or the key window releases capture.
+/// The AppKit view that shows the decoded pictures in a Metal layer and
+/// forwards focused native input. Clicking it requests input capture (the
+/// click itself stays local); losing first responder or the key window, or
+/// the release shortcut, releases capture.
 struct RemoteSurface: NSViewRepresentable {
     var display: VideoDisplay?
     var isCapturing: Bool
+    /// Where captured input goes; `nil` unless capturing.
+    var input: InputForwarder?
+    var cursor: RemoteCursor
     var onCapture: @MainActor () -> Void
-    var onFocusLost: @MainActor () -> Void
+    var onRelease: @MainActor () -> Void
 
     func makeNSView(context: Context) -> SurfaceView {
         let view = SurfaceView()
@@ -134,21 +152,38 @@ struct RemoteSurface: NSViewRepresentable {
     }
 
     static func dismantleNSView(_ view: SurfaceView, coordinator: ()) {
+        view.input = nil
+        view.isCapturing = false
         view.display = nil
     }
 
     private func update(_ view: SurfaceView) {
         view.onCapture = onCapture
-        view.onFocusLost = onFocusLost
+        view.onRelease = onRelease
+        view.input = input
+        view.remoteCursor = cursor
         view.isCapturing = isCapturing
         view.display = display
     }
 
     final class SurfaceView: NSView {
         var onCapture: (@MainActor () -> Void)?
-        var onFocusLost: (@MainActor () -> Void)?
+        /// Ends capture: release shortcut, focus loss, window closing.
+        var onRelease: (@MainActor () -> Void)?
+        /// Set while capturing; keys, buttons, motion and scrolling go there.
+        var input: InputForwarder?
         var isCapturing = false {
-            didSet { border.borderWidth = isCapturing ? 2 : 0 }
+            didSet {
+                guard isCapturing != oldValue else { return }
+                border.borderWidth = isCapturing ? 2 : 0
+                // Capture from the menu or toolbar: keys come here now.
+                if isCapturing, let window, window.firstResponder !== self { window.makeFirstResponder(self) }
+                updateKeyMonitor()
+                cursorChanged()
+            }
+        }
+        var remoteCursor = RemoteCursor.hidden {
+            didSet { if remoteCursor != oldValue { cursorChanged() } }
         }
         /// The pictures to show. Replacing it detaches the previous one.
         var display: VideoDisplay? {
@@ -170,6 +205,10 @@ struct RemoteSurface: NSViewRepresentable {
             return renderer
         }()
         nonisolated(unsafe) private var observers: [any NSObjectProtocol] = []
+        /// The local key monitor, installed only while capturing in a window.
+        nonisolated(unsafe) private var keyMonitor: Any?
+        private var trackingArea: NSTrackingArea?
+        private var builtCursor: (cursor: RemoteCursor, scale: CGFloat, value: NSCursor)?
 
         override init(frame: NSRect) {
             super.init(frame: frame)
@@ -187,13 +226,8 @@ struct RemoteSurface: NSViewRepresentable {
         override var acceptsFirstResponder: Bool { true }
         override var isFlipped: Bool { true }
 
-        override func mouseDown(with event: NSEvent) {
-            window?.makeFirstResponder(self)
-            onCapture?()
-        }
-
         override func resignFirstResponder() -> Bool {
-            onFocusLost?()
+            release()
             return super.resignFirstResponder()
         }
 
@@ -201,11 +235,12 @@ struct RemoteSurface: NSViewRepresentable {
             super.viewDidMoveToWindow()
             observers.forEach(NotificationCenter.default.removeObserver)
             observers = []
+            updateKeyMonitor()
             guard let window else { return }
             observers = [NSWindow.didResignKeyNotification, NSWindow.willCloseNotification].map { name in
                 NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) {
                     [weak self] _ in
-                    MainActor.assumeIsolated { self?.onFocusLost?() }
+                    MainActor.assumeIsolated { self?.release() }
                 }
             }
             needsLayout = true
@@ -219,7 +254,7 @@ struct RemoteSurface: NSViewRepresentable {
         /// Sizes the drawable in backing pixels and redraws the last picture.
         override func layout() {
             super.layout()
-            let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 1
+            let scale = backingScale
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             videoLayer.frame = bounds
@@ -229,7 +264,149 @@ struct RemoteSurface: NSViewRepresentable {
                 width: (bounds.width * scale).rounded(), height: (bounds.height * scale).rounded())
             CATransaction.commit()
             render()
+            // The remote cursor's size follows the picture's scale.
+            if isCapturing { window?.invalidateCursorRects(for: self) }
         }
+
+        private var backingScale: CGFloat {
+            window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 1
+        }
+
+        // MARK: Pointer
+
+        /// The mapping for the picture on screen; `nil` before the first one.
+        var pointerMapping: PointerMapping? {
+            guard let geometry = display?.latest?.geometry else { return nil }
+            return PointerMapping(viewSize: bounds.size, backingScale: backingScale, frame: geometry)
+        }
+
+        override func updateTrackingAreas() {
+            super.updateTrackingAreas()
+            if let trackingArea { removeTrackingArea(trackingArea) }
+            let area = NSTrackingArea(
+                rect: .zero, options: [.mouseMoved, .activeInKeyWindow, .inVisibleRect], owner: self)
+            addTrackingArea(area)
+            trackingArea = area
+        }
+
+        override func mouseDown(with event: NSEvent) { buttonDown(event) }
+        override func rightMouseDown(with event: NSEvent) { buttonDown(event) }
+        override func otherMouseDown(with event: NSEvent) { buttonDown(event) }
+        override func mouseUp(with event: NSEvent) { buttonUp(event) }
+        override func rightMouseUp(with event: NSEvent) { buttonUp(event) }
+        override func otherMouseUp(with event: NSEvent) { buttonUp(event) }
+        override func mouseMoved(with event: NSEvent) { move(event) }
+        // Drags keep coming outside the view and the window; they clamp.
+        override func mouseDragged(with event: NSEvent) { move(event) }
+        override func rightMouseDragged(with event: NSEvent) { move(event) }
+        override func otherMouseDragged(with event: NSEvent) { move(event) }
+
+        override func scrollWheel(with event: NSEvent) {
+            input?.scroll(PointerEvents.scroll(
+                deltaX: event.scrollingDeltaX, deltaY: event.scrollingDeltaY,
+                precise: event.hasPreciseScrollingDeltas, phase: event.phase,
+                momentumPhase: event.momentumPhase))
+        }
+
+        private func buttonDown(_ event: NSEvent) {
+            guard let input else {
+                // The click that captures input is not sent.
+                window?.makeFirstResponder(self)
+                onCapture?()
+                return
+            }
+            move(event)
+            input.button(event.buttonNumber, pressed: true)
+        }
+
+        private func buttonUp(_ event: NSEvent) {
+            guard let input else { return }
+            move(event)
+            input.button(event.buttonNumber, pressed: false)
+        }
+
+        private func move(_ event: NSEvent) {
+            guard let input, let point = pointerMapping?.remotePoint(convert(event.locationInWindow, from: nil))
+            else { return }
+            input.move(to: point)
+        }
+
+        // MARK: Keyboard
+
+        /// Keys reach the forwarder through a local monitor rather than
+        /// `keyDown`: it sees Command chords before menu key equivalents and
+        /// key-ups that AppKit does not deliver while Command is down. It
+        /// exists only while capturing and takes only this window's events
+        /// while the surface is first responder.
+        private func updateKeyMonitor() {
+            let wanted = isCapturing && window != nil
+            if wanted, keyMonitor == nil {
+                keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) {
+                    [weak self] event in
+                    let consumed = MainActor.assumeIsolated { self?.handleKey(event) ?? false }
+                    return consumed ? nil : event
+                }
+            } else if !wanted, let keyMonitor {
+                NSEvent.removeMonitor(keyMonitor)
+                self.keyMonitor = nil
+            }
+        }
+
+        /// Forwards a key event; true when it was consumed. The release
+        /// shortcut is consumed and never sent.
+        func handleKey(_ event: NSEvent) -> Bool {
+            guard let input, event.window === window, window?.firstResponder === self else { return false }
+            switch event.type {
+            case .keyDown:
+                if Preferences.isReleaseShortcut(keyCode: event.keyCode, modifierFlags: event.modifierFlags) {
+                    release()
+                } else {
+                    input.keyDown(event.keyCode, isRepeat: event.isARepeat)
+                }
+            case .keyUp:
+                input.keyUp(event.keyCode)
+            case .flagsChanged:
+                input.flagsChanged(event.keyCode, modifierFlags: UInt(event.modifierFlags.rawValue))
+            default:
+                return false
+            }
+            return true
+        }
+
+        /// Ends capture now; the controller releases what the remote holds.
+        private func release() {
+            guard input != nil || isCapturing else { return }
+            onRelease?()
+            input = nil
+            isCapturing = false
+        }
+
+        // MARK: Cursor
+
+        override func resetCursorRects() {
+            addCursorRect(bounds, cursor: currentCursor())
+        }
+
+        /// The remote cursor while capturing, the arrow otherwise.
+        private func currentCursor() -> NSCursor {
+            guard isCapturing else { return .arrow }
+            let scale = pointerMapping?.pointsPerStreamPixel ?? 1 / backingScale
+            if let built = builtCursor, built.cursor == remoteCursor, built.scale == scale {
+                return built.value
+            }
+            let cursor = remoteCursor.makeCursor(pointsPerPixel: scale)
+            builtCursor = (remoteCursor, scale, cursor)
+            return cursor
+        }
+
+        private func cursorChanged() {
+            guard let window else { return }
+            window.invalidateCursorRects(for: self)
+            let inside = bounds.contains(convert(window.mouseLocationOutsideOfEventStream, from: nil))
+            if inside, window.isKeyWindow { currentCursor().set() }
+        }
+
+        // MARK: Pictures
 
         private func attach() {
             guard let display else { return }
@@ -260,6 +437,7 @@ struct RemoteSurface: NSViewRepresentable {
 
         deinit {
             observers.forEach(NotificationCenter.default.removeObserver)
+            if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
         }
     }
 }

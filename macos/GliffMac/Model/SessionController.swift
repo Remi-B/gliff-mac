@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 import GliffCore
 import os
 
@@ -8,7 +8,8 @@ import os
 /// attempt other than the current one is ignored, so a replaced, disconnected
 /// or closed session can never change this window's state. Sessions themselves
 /// live in the shared `SessionRegistry` until they end, so input and clipboard
-/// ownership (tasks 09 and 11) stay with the window that started them.
+/// ownership (tasks 09 and 11) stay with the window that started them. Each
+/// session gets its own `InputForwarder`, so capture is per window.
 ///
 /// Networking, decoding and teardown run in the bridge; this type only reacts
 /// to main-actor events and never blocks.
@@ -65,12 +66,21 @@ final class SessionController: ObservableObject {
     @Published private(set) var isCapturingInput = false
     /// The current session's decoded pictures, for the remote surface.
     @Published private(set) var videoDisplay: VideoDisplay?
+    /// The local layout the remote keymap follows, shown before input is used.
+    @Published private(set) var keyboardLayout: KeyboardLayout?
+    /// The pointer the surface shows while input is captured.
+    @Published private(set) var remoteCursor = RemoteCursor.hidden
 
     /// The settings of the current or last attempt, used by reconnect.
     private(set) var activeRequest: ConnectionRequest?
     private(set) var currentSession: SessionID?
     private var hello: ServerHello?
     private var isClosed = false
+    /// The current session's input state; `nil` without a session.
+    private var forwarder: InputForwarder?
+    private var cursorImage: RemoteCursorImage?
+    private let currentLayout: @MainActor () -> KeyboardLayout
+    nonisolated(unsafe) private var layoutObserver: (any NSObjectProtocol)?
 
     private let log = Logger(subsystem: "com.remi-b.gliff-mac", category: "session")
     private let factory: any SessionFactory
@@ -79,12 +89,23 @@ final class SessionController: ObservableObject {
 
     init(
         factory: any SessionFactory, registry: SessionRegistry, recents: RecentConnections,
-        request: ConnectionRequest = ConnectionRequest()
+        request: ConnectionRequest = ConnectionRequest(),
+        currentLayout: @escaping @MainActor () -> KeyboardLayout = KeyboardLayout.current
     ) {
         self.factory = factory
         self.registry = registry
         self.recents = recents
         self.request = request
+        self.currentLayout = currentLayout
+        layoutObserver = DistributedNotificationCenter.default().addObserver(
+            forName: KeyboardLayout.selectionChanged, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.keyboardLayoutChanged() }
+        }
+    }
+
+    deinit {
+        if let layoutObserver { DistributedNotificationCenter.default().removeObserver(layoutObserver) }
     }
 
     // MARK: State for views
@@ -157,16 +178,28 @@ final class SessionController: ObservableObject {
         fieldErrors = [:]
     }
 
-    // MARK: Input capture (forwarding arrives with task 09)
+    // MARK: Input capture
+
+    /// Where the surface sends captured input; `nil` unless capturing.
+    var input: InputForwarder? { isCapturingInput ? forwarder : nil }
 
     func captureInput() {
-        guard isStreaming else { return }
+        guard isStreaming, let forwarder else { return }
+        keyboardLayout = forwarder.syncLayout()
         isCapturingInput = true
     }
 
-    /// The release shortcut, focus loss and every phase change end capture.
+    /// The release shortcut, focus loss and every phase change end capture,
+    /// and release every key and button still down on the remote.
     func releaseInput() {
+        forwarder?.releaseAll()
         isCapturingInput = false
+    }
+
+    /// macOS selected another input source: the remote gets its keymap now,
+    /// ahead of any key typed with it.
+    func keyboardLayoutChanged() {
+        keyboardLayout = forwarder?.syncLayout() ?? currentLayout()
     }
 
     // MARK: Session lifecycle
@@ -175,12 +208,17 @@ final class SessionController: ObservableObject {
         activeRequest = request
         serverMessage = nil
         hello = nil
+        setCursorImage(nil)
         do {
             let session = try factory.makeSession(for: request)
             currentSession = try registry.start(session) { [weak self] id, event in
                 self?.handle(event, from: id)
             }
             videoDisplay = session.videoDisplay
+            forwarder = InputForwarder(layout: session.keyboardLayout, currentLayout: currentLayout) {
+                [weak session] in session?.send($0) ?? false
+            }
+            keyboardLayout = session.keyboardLayout ?? currentLayout()
             self.phase = phase
         } catch {
             currentSession = nil
@@ -194,6 +232,12 @@ final class SessionController: ObservableObject {
         if let id = currentSession { registry.cancel(id) }
         currentSession = nil
         videoDisplay = nil
+        forwarder = nil
+    }
+
+    private func setCursorImage(_ image: RemoteCursorImage?) {
+        cursorImage = image
+        remoteCursor = RemoteCursor(image: image, headless: hello?.headless ?? true)
     }
 
     /// Applies an event from session `id`; stale sessions are ignored.
@@ -202,6 +246,7 @@ final class SessionController: ObservableObject {
         switch event {
         case .connected(let hello):
             self.hello = hello
+            setCursorImage(cursorImage)
             if let request = activeRequest { recents.remember(request) }
             advance(to: .awaitingVideo)
         case .videoConfig(let config):
@@ -212,13 +257,17 @@ final class SessionController: ObservableObject {
                     reducedChroma: config.chroma == .single420, displaysVideo: videoDisplay != nil))
         case .serverError(let code, let message):
             serverMessage = "\(message) (code \(code))"
-        case .cursorShape, .cursorPosition:
-            // Cursor presentation arrives with the remote surface (tasks 07 and 09).
+        case .cursorShape(let shape):
+            // A malformed shape keeps the previous one.
+            if let image = RemoteCursorImage(shape) { setCursorImage(image) }
+        case .cursorPosition:
+            // The local pointer is the remote one's position (`RemoteCursor`).
             break
         case .ended(let end):
+            releaseInput()
             currentSession = nil
             videoDisplay = nil
-            releaseInput()
+            forwarder = nil
             switch end {
             case .closed: phase = .stopped(.serverClosed)
             case .cancelled: phase = .stopped(.disconnected)

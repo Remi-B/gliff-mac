@@ -131,7 +131,8 @@ Gates: `bridge-build` (the script), `swift-package` (package and tests built for
 and x86_64), `bridge-import` (`swift test` on the host architecture), `macos-app`,
 `app-tests`, `video-decode` (the Single420 video suites of the app tests) and
 `metal-chroma` (the Dual420 suites: `ChromaRecombinationTests`,
-`Dual420DecoderTests`, `FrameJobTests`, `ColorSignallingTests`).
+`Dual420DecoderTests`, `FrameJobTests`, `ColorSignallingTests`), plus
+`remote-input` (the input suites of the app tests).
 
 ## Native app
 
@@ -185,6 +186,18 @@ Every frame must decode; the Metal output must equal the CPU reference, and a
 `<name>.json` manifest beside a stream (`gliff-fixture-gen describe`) must match.
 The test prints one `live-replay` line per stream; it is skipped without the
 variable.
+
+Remote input (`macos/GliffMac/Input`, [task 09 record](09-implement-remote-input/implementation-record.md)):
+while a window captures input, a local key monitor and the surface's mouse
+overrides feed that session's `InputForwarder`, which sends physical keys as
+evdev codes, pointer positions through the renderer's fit and `scale_milli`,
+evdev buttons and Wayland-style scroll axes, and releases everything still down
+when capture ends. The remote keymap follows the macOS input source (U.S., ABC,
+French and French – PC; others fall back to U.S., shown in the status bar) and a
+switch is sent before the next key. The remote cursor shape replaces the local
+pointer while capturing. ⇧⎋ releases capture; reserved macOS shortcuts stay
+local. No Accessibility or Input Monitoring permission is used. The
+`remote-input` gate runs the input suites of the app tests.
 
 `SessionController` (one per window, main actor) owns the connection form and
 phases, and ignores callbacks from sessions it replaced. `SessionRegistry` owns

@@ -95,7 +95,11 @@ GATES = [
      [["scripts/test-app.sh"] + ["-only-testing:GliffMacTests/" + suite for suite in (
          "ChromaRecombinationTests", "Dual420DecoderTests", "FrameJobTests",
          "ColorSignallingTests")]]),
-    ("remote-input", "Keyboard/pointer mapping and escape shortcut", False, "planned:09", []),
+    ("remote-input", "Keyboard/pointer mapping, layouts, cursor and release shortcut", True,
+     "macos",
+     [["scripts/test-app.sh"] + ["-only-testing:GliffMacTests/" + suite for suite in (
+         "KeyCodeTests", "KeyboardLayoutTests", "PointerMappingTests", "InputForwarderTests",
+         "RemoteCursorTests", "SurfaceInputTests", "SessionControllerTests")]]),
     ("displays-reconnect", "Mirror/headless, resize and reconnection", False, "planned:10", []),
     ("clipboard", "Shared clipboard transfers and isolation", False, "planned:11", []),
     ("acceptance", "Cross-platform acceptance matrix and measurements", False, "planned:12",

@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Preference keys and the release shortcut, shared by views and commands.
@@ -11,6 +12,13 @@ enum Preferences {
     /// otherwise; input forwarding must consume it and never send it.
     static let releaseShortcut = KeyboardShortcut(.escape, modifiers: .shift)
     static let releaseShortcutDescription = "⇧⎋"
+
+    /// Whether a key-down is the release shortcut: Escape with Shift and no
+    /// other modifier (Caps Lock, Fn and keypad state are ignored).
+    static func isReleaseShortcut(keyCode: UInt16, modifierFlags: NSEvent.ModifierFlags) -> Bool {
+        let modifiers = modifierFlags.intersection([.shift, .control, .option, .command])
+        return keyCode == 0x35 && modifiers == .shift
+    }
 }
 
 struct SettingsView: View {
@@ -24,7 +32,11 @@ struct SettingsView: View {
                 Toggle("Capture keyboard and pointer when clicking the remote desktop", isOn: $captureInput)
                 Text("""
                     Press \(Preferences.releaseShortcutDescription) to release input at any time. \
-                    Sending input to the server arrives in a later version.
+                    While input is captured, keys go to the server as physical keys, Command as Super \
+                    and Option as Alt (right Option as AltGr); shortcuts macOS reserves, such as ⌘Tab, \
+                    ⌘Space, Mission Control and screenshots, stay on this Mac. The remote layout follows \
+                    the input source: U.S., ABC, French and French – PC are supported, others type as U.S. \
+                    Input methods, dictation and the emoji picker are not sent.
                     """)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
