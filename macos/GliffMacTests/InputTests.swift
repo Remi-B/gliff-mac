@@ -448,7 +448,12 @@ final class EventLog {
         surface = RemoteSurface.SurfaceView(frame: window.contentLayoutRect)
         window.contentView = surface
         var buffer: CVPixelBuffer?
-        CVPixelBufferCreate(nil, 16, 16, kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange, nil, &buffer)
+        let attributes: [String: Any] = [
+            kCVPixelBufferIOSurfacePropertiesKey as String: [:],
+            kCVPixelBufferMetalCompatibilityKey as String: true,
+        ]
+        CVPixelBufferCreate(nil, 800, 600, kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
+                            attributes as CFDictionary, &buffer)
         // 800×600 stream pixels at scale 2: a 400×300 logical output.
         display.post(DecodedFrame(
             pixelBuffer: try #require(buffer), geometry: FrameGeometry(width: 800, height: 600, scaleMilli: 2000),
