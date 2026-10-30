@@ -1,6 +1,6 @@
 # Task 03 implementation record
 
-Updated: 2026-10-29. Branch `feat/automate-upstream-sync`. Status: in review.
+Updated: 2026-10-29. Branch `feat/automate-upstream-sync`. Status: merged (#4).
 Upstream `main` is still `58c742452ded` (v0.4.1, the pin), so no real upgrade exists;
 the workflow was rehearsed with the baseline, a stale pin and a simulated incompatible
 upstream commit, and none of these is reported as an upgrade.

@@ -10,6 +10,9 @@ final class FakeSession: RemoteSession {
     var startError: (any Error)?
     /// Ends with `.cancelled` as soon as it is cancelled, like a quick teardown.
     var endsOnCancel = false
+    /// Set to stand for a session with a decoder.
+    var display: VideoDisplay?
+    var videoDisplay: VideoDisplay? { display }
 
     func start(events: @escaping @MainActor @Sendable (SessionEvent) -> Void) throws {
         startCount += 1

@@ -1,6 +1,6 @@
 # 05 — implement-ssh-session
 
-Status: merged; live SSH and Finder transport acceptance passed. Dependencies: [03](../03-automate-upstream-sync-and-compatibility/README.md),
+Status: merged (#6); live SSH and Finder transport acceptance passed. Dependencies: [03](../03-automate-upstream-sync-and-compatibility/README.md),
 [04](../04-build-rust-swift-bridge/README.md).
 
 ## Outcome

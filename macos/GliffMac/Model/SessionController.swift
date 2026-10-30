@@ -49,7 +49,7 @@ final class SessionController: ObservableObject {
         var headless: Bool
         /// 4:2:0 chroma: text and fine colour detail lose resolution.
         var reducedChroma: Bool
-        /// Frames arrive but are not decoded or displayed yet (task 07).
+        /// The session decodes and shows video (`videoDisplay`).
         var displaysVideo: Bool
     }
 
@@ -63,6 +63,8 @@ final class SessionController: ObservableObject {
     @Published private(set) var serverMessage: String?
     /// Whether the remote surface owns keyboard and pointer input.
     @Published private(set) var isCapturingInput = false
+    /// The current session's decoded pictures, for the remote surface.
+    @Published private(set) var videoDisplay: VideoDisplay?
 
     /// The settings of the current or last attempt, used by reconnect.
     private(set) var activeRequest: ConnectionRequest?
@@ -178,9 +180,11 @@ final class SessionController: ObservableObject {
             currentSession = try registry.start(session) { [weak self] id, event in
                 self?.handle(event, from: id)
             }
+            videoDisplay = session.videoDisplay
             self.phase = phase
         } catch {
             currentSession = nil
+            videoDisplay = nil
             self.phase = .failed(SessionFailure(starting: error))
         }
     }
@@ -189,6 +193,7 @@ final class SessionController: ObservableObject {
         releaseInput()
         if let id = currentSession { registry.cancel(id) }
         currentSession = nil
+        videoDisplay = nil
     }
 
     /// Applies an event from session `id`; stale sessions are ignored.
@@ -204,7 +209,7 @@ final class SessionController: ObservableObject {
                 StreamInfo(
                     width: config.width, height: config.height,
                     output: hello?.output ?? "", headless: hello?.headless ?? true,
-                    reducedChroma: config.chroma == .single420, displaysVideo: false))
+                    reducedChroma: config.chroma == .single420, displaysVideo: videoDisplay != nil))
         case .serverError(let code, let message):
             serverMessage = "\(message) (code \(code))"
         case .cursorShape, .cursorPosition:
@@ -212,6 +217,7 @@ final class SessionController: ObservableObject {
             break
         case .ended(let end):
             currentSession = nil
+            videoDisplay = nil
             releaseInput()
             switch end {
             case .closed: phase = .stopped(.serverClosed)

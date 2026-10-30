@@ -39,6 +39,31 @@ import Testing
         #expect(controller.canReconnect && controller.canDisconnect)
     }
 
+    @Test func theSurfaceGetsTheCurrentSessionsPicturesOnly() throws {
+        factory.configure = { $0.display = VideoDisplay() }
+        controller.connect()
+        let first = try #require(factory.last.display)
+        #expect(controller.videoDisplay === first)
+        factory.last.becomeStreaming()
+        guard case .streaming(let info) = controller.phase else {
+            Issue.record("expected streaming, got \(controller.phase)")
+            return
+        }
+        #expect(info.displaysVideo)
+
+        controller.reconnect()
+        let second = try #require(factory.last.display)
+        #expect(controller.videoDisplay === second && second !== first)
+        factory.last.becomeStreaming()
+        factory.last.emit(.ended(.closed))
+        #expect(controller.videoDisplay == nil)
+
+        controller.reconnect()
+        #expect(controller.videoDisplay === factory.last.display)
+        controller.disconnect()
+        #expect(controller.videoDisplay == nil)
+    }
+
     @Test func invalidFieldsNeverStartASession() {
         controller.request = ConnectionRequest(host: "-oProxyCommand=x", user: "a b", port: "0",
                                                identityFile: "id_ed25519", serverPath: "~/gliff-server")

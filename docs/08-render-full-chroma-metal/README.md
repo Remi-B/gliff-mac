@@ -36,3 +36,10 @@ recombination. Native H.264 4:4:4 decoding is not assumed or advertised.
   main/aux frames or generations; failure recovers or reports a clear error.
 - Metal pipeline costs, native memory and pairing limits are recorded for task 12.
   Full-chroma support is a release gate, not inferred from a single-stream demo.
+
+From task 07: `H264Decoder` decodes one stream per frame and `VideoRenderer`
+converts each picture in a compute pass that matches upstream's reference
+byte for byte, then presents it with an aspect fit. Dual420 decodes main and aux
+(completion when both callbacks fired) and replaces the conversion pass with
+the recombination; presentation, `VideoDisplay` and the decode reports stay.
+Advertise Dual420 in `LiveSessionFactory` and the bridge's SSH target only then.

@@ -34,6 +34,32 @@ import Testing
         #expect(phases.last == "stopped")
     }
 
+    /// Real bridge, real VideoToolbox: every frame the bridge delivered is
+    /// acknowledged from a native decode completion, and pictures appear.
+    @Test(arguments: ["synthetic-single420", "live-cpu-single420"])
+    func recordedFramesAreDecodedAndAcknowledgedNatively(_ name: String) async throws {
+        let session = try LiveSession(
+            target: .replay(stream: try fixture(name)), options: SessionOptions(chroma: [.single420]))
+        let display = try #require(session.videoDisplay)
+        let ended = EndFlag()
+        display.setObserver { ended.wake() }
+        try session.start { event in
+            if case .ended(let end) = event { ended.set(end) }
+        }
+        try await waitUntil { ended.end != nil }
+        #expect(ended.end == .closed)
+        let stats = session.stats
+        let video = display.diagnostics
+        #expect(stats.framesDelivered > 0)
+        #expect(video.decoded == stats.framesDelivered)
+        #expect(video.failed == 0 && stats.framesFailed == 0 && stats.keyframeRequests == 0)
+        // Delivered frames are acked on native completion, dropped ones at once.
+        #expect(stats.acksSent == stats.framesDelivered + stats.framesDropped)
+        #expect(ended.wakes > 0, "pictures reached the display")
+        // The decoder is invalidated on its queue right after the end.
+        try await waitUntil { display.latest == nil }
+    }
+
     @Test func cancellingARealSessionEndsItAndReleasesIt() async throws {
         let registry = SessionRegistry()
         let controller = SessionController(
@@ -89,4 +115,15 @@ private func waitUntil(timeout: Duration = .seconds(10), _ condition: () -> Bool
         try await Task.sleep(for: .milliseconds(5))
     }
     #expect(condition())
+}
+
+/// Records a session's end and display wake-ups, from any thread.
+private final class EndFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _end: SessionEnd?
+    private var _wakes = 0
+    var end: SessionEnd? { lock.withLock { _end } }
+    var wakes: Int { lock.withLock { _wakes } }
+    func set(_ end: SessionEnd) { lock.withLock { _end = end } }
+    func wake() { lock.withLock { _wakes += 1 } }
 }
