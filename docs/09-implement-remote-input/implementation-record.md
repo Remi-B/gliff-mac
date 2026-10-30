@@ -35,7 +35,8 @@ is requested. Ordinary toolbar, menu and local text controls remain available.
 Capture is per window: click the surface (when enabled in Settings), use the
 keyboard toolbar button, or Connection > Capture Input. The capturing click
 stays local. Shift+Escape releases capture and is consumed. The toolbar/menu,
-first-responder loss, key-window loss, close, disconnect, reconnect and session
+first-responder loss, key-window loss, menu tracking, control/window tracking loops, live resize,
+window movement, sheets/modal panels, close, disconnect, reconnect and session
 end also release it. `InputForwarder` tracks physical keys and evdev buttons,
 drops auto-repeat and unpaired releases, and lifts every held input once.
 Forwarders are deactivated synchronously on release, and permanently retired
@@ -107,7 +108,9 @@ both axes. macOS momentum is dropped, matching the remote kinetic-scroll policy.
 Validated cursor shapes are premultiplied BGRA, at most 1024×1024 with an in-image
 hotspot. A captured surface uses `NSCursor` at the local pointer for low latency;
 there is no second overlay. A released surface draws a real shape at the last
-visible `CursorPos` with matching shape ID and hotspot. Cursor positions are full
+visible `CursorPos` with the current shape's hotspot. Shape IDs associate a
+queued position with the image at that instant; they do not expire the location.
+A new shape preserves the last location and visibility without requiring motion. Cursor positions are full
 capture-buffer pixels, so their mapping and image size also account for the
 output scale in Hello, independently of encoder downscaling. The
 [protocol position contract](https://smithay.github.io/wayland-rs/wayland_protocols/ext/image_copy_capture/v1/client/ext_image_copy_capture_cursor_session_v1/enum.Event.html)
@@ -199,3 +202,34 @@ project approval, so native UI automation was used instead.
 - Task 08 must merge first, followed by shared session wiring resolution and
   combined Single420/Dual420 input/cursor validation. Neither branch is merged
   or watched by this task.
+
+## Independent review follow-up
+
+The independent review of `f86f61e` was static; it ran no tests or live checks.
+Both findings were independently confirmed and fixed:
+
+- **P1, menu/local tracking bypasses key monitors:** an actual native AppKit
+  popup and actual event-tracking/modal run-loop entry reproduced held input
+  surviving while local UI handled events. Capture now ends synchronously on
+  `NSMenu.didBeginTrackingNotification`, entry/source processing in the main
+  event-tracking/modal modes, and window move/live-resize/sheet transitions.
+  Keys/buttons/finger axes are released, and capture stays released when the
+  local interaction ends. The capture-only observers are removed with the key
+  monitor on release, detachment and teardown. `openingANativeMenuReleasesHeldInput`
+  asserts AppKit really posted the native tracking notification;
+  `nestedLocalTrackingReleasesCapture` runs both real nested modes. These tests
+  do not invoke `handleKey` to simulate the tracking transition.
+- **P2, shape-only cursor update hides a stationary cursor:** the pinned server's
+  writer discards queued positions when publishing a new shape and need not send
+  more motion. The overlay no longer treats a position's old shape ID as an
+  invalid location. `aShapeOnlyUpdateKeepsTheLastVisiblePosition` proves the
+  stationary location/visibility survives while the replacement hotspot takes
+  effect, without another position event. Invisible positions still hide it.
+
+The new regressions were run against original `f86f61e` and failed as expected,
+then passed with the fixes. The tracking/cursor suite was repeated to check
+native menu and nested-run-loop timing. Fresh full-check results are posted on
+PR #10. Previous `f86f61e` live-host evidence remains previous-source evidence;
+this follow-up changes local AppKit hooks/cursor rendering and does not claim a
+new Linux/hardware run or a completed final compatibility qualification. Task
+08's `LiveSession.chroma` must still be retained when the branches integrate.

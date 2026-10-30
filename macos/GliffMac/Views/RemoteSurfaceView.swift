@@ -184,7 +184,7 @@ struct RemoteSurface: NSViewRepresentable {
                 border.borderWidth = isCapturing ? 2 : 0
                 // Capture from the menu or toolbar: keys come here now.
                 if isCapturing, let window, window.firstResponder !== self { window.makeFirstResponder(self) }
-                updateKeyMonitor()
+                updateEventHooks()
                 cursorChanged()
                 updateCursorOverlay()
             }
@@ -225,6 +225,8 @@ struct RemoteSurface: NSViewRepresentable {
         nonisolated(unsafe) private var observers: [any NSObjectProtocol] = []
         /// The local key monitor, installed only while capturing in a window.
         nonisolated(unsafe) private var keyMonitor: Any?
+        nonisolated(unsafe) private var menuObserver: (any NSObjectProtocol)?
+        nonisolated(unsafe) private var trackingObserver: CFRunLoopObserver?
         private var trackingArea: NSTrackingArea?
         private var builtCursor: (cursor: RemoteCursor, scale: CGFloat, value: NSCursor)?
 
@@ -254,9 +256,11 @@ struct RemoteSurface: NSViewRepresentable {
             super.viewDidMoveToWindow()
             observers.forEach(NotificationCenter.default.removeObserver)
             observers = []
-            updateKeyMonitor()
+            updateEventHooks()
             guard let window else { release(); return }
-            observers = [NSWindow.didResignKeyNotification, NSWindow.willCloseNotification].map { name in
+            observers = [NSWindow.didResignKeyNotification, NSWindow.willCloseNotification,
+                         NSWindow.willMoveNotification, NSWindow.willStartLiveResizeNotification,
+                         NSWindow.willBeginSheetNotification].map { name in
                 NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) {
                     [weak self] _ in
                     MainActor.assumeIsolated { self?.release() }
@@ -364,17 +368,45 @@ struct RemoteSurface: NSViewRepresentable {
         /// key-ups that AppKit does not deliver while Command is down. It
         /// exists only while capturing and takes only this window's events
         /// while the surface is first responder.
-        private func updateKeyMonitor() {
+        private func updateEventHooks() {
             let wanted = isCapturing && window != nil
-            if wanted, keyMonitor == nil {
-                keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) {
-                    [weak self] event in
-                    let consumed = MainActor.assumeIsolated { self?.handleKey(event) ?? false }
-                    return consumed ? nil : event
+            if wanted {
+                if keyMonitor == nil {
+                    keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) {
+                        [weak self] event in
+                        let consumed = MainActor.assumeIsolated { self?.handleKey(event) ?? false }
+                        return consumed ? nil : event
+                    }
                 }
-            } else if !wanted, let keyMonitor {
-                NSEvent.removeMonitor(keyMonitor)
-                self.keyMonitor = nil
+                // AppKit bypasses local event monitors inside menu/control
+                // tracking and window-drag loops. Release before they can
+                // consume a key-up; capture stays released when tracking ends.
+                if menuObserver == nil {
+                    menuObserver = NotificationCenter.default.addObserver(
+                        forName: NSMenu.didBeginTrackingNotification, object: nil, queue: .main
+                    ) { [weak self] _ in
+                        MainActor.assumeIsolated { self?.release() }
+                    }
+                }
+                if trackingObserver == nil {
+                    let activities: CFRunLoopActivity = [.entry, .beforeTimers, .beforeSources]
+                    let observer = CFRunLoopObserverCreateWithHandler(
+                        nil, activities.rawValue, true, 0
+                    ) { [weak self] _, _ in
+                        MainActor.assumeIsolated { self?.release() }
+                    }
+                    trackingObserver = observer
+                    for mode in [RunLoop.Mode.eventTracking, .modalPanel] {
+                        CFRunLoopAddObserver(CFRunLoopGetMain(), observer, CFRunLoopMode(rawValue: mode.rawValue as CFString))
+                    }
+                }
+            } else {
+                if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+                keyMonitor = nil
+                if let menuObserver { NotificationCenter.default.removeObserver(menuObserver) }
+                menuObserver = nil
+                if let trackingObserver { CFRunLoopObserverInvalidate(trackingObserver) }
+                trackingObserver = nil
             }
         }
 
@@ -404,7 +436,7 @@ struct RemoteSurface: NSViewRepresentable {
 
         private func release() {
             guard input != nil || isCapturing else { return }
-            input?.releaseAll()
+            input?.deactivate()
             onRelease?()
             input = nil
             isCapturing = false
@@ -446,7 +478,10 @@ struct RemoteSurface: NSViewRepresentable {
             CATransaction.setDisableActions(true)
             defer { CATransaction.commit() }
             guard !isCapturing, case .image(let image) = remoteCursor,
-                let position = cursorPosition, position.visible, position.shapeId == image.id,
+                // Shape IDs describe the shape at the time a position was
+                // queued, not the lifetime of that location. The server can
+                // replace a shape without sending another position.
+                let position = cursorPosition, position.visible,
                 let mapping = pointerMapping,
                 let point = mapping.cursorPoint(CGPoint(x: position.x, y: position.y), outputScale: cursorOutputScale)
             else { cursorLayer.isHidden = true; return }
@@ -501,6 +536,8 @@ struct RemoteSurface: NSViewRepresentable {
         deinit {
             observers.forEach(NotificationCenter.default.removeObserver)
             if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+            if let menuObserver { NotificationCenter.default.removeObserver(menuObserver) }
+            if let trackingObserver { CFRunLoopObserverInvalidate(trackingObserver) }
         }
     }
 }

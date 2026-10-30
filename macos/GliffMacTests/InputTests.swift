@@ -488,6 +488,7 @@ final class EventLog {
 
     func capture() {
         window.testIsKey = true
+        forwarder.activate()
         surface.input = forwarder
         surface.isCapturing = true
         window.makeFirstResponder(surface)
@@ -560,6 +561,53 @@ final class EventLog {
         window.close()
     }
 
+    /// A real AppKit popup enters menu tracking, whose events bypass the
+    /// local key monitor. A held key/button must be released without a key-up.
+    @Test func openingANativeMenuReleasesHeldInput() {
+        var released = 0
+        surface.onRelease = { released += 1; self.forwarder.deactivate() }
+        capture()
+        forwarder.keyDown(UInt16(kVK_ANSI_A), isRepeat: false)
+        forwarder.button(0, pressed: true)
+        let menu = NSMenu(title: "Input release test")
+        let tracking = OSAllocatedUnfairLockCounter()
+        let observer = NotificationCenter.default.addObserver(
+            forName: NSMenu.didBeginTrackingNotification, object: menu, queue: nil
+        ) { _ in tracking.increment() }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        menu.addItem(withTitle: "Local action", action: nil, keyEquivalent: "")
+        let cancel = Timer(timeInterval: 0.05, target: menu,
+            selector: #selector(NSMenu.cancelTrackingWithoutAnimation), userInfo: nil, repeats: false)
+        RunLoop.main.add(cancel, forMode: .eventTracking)
+        defer { cancel.invalidate(); window.close() }
+        // The popup is intentionally cancelled rather than choosing an item.
+        #expect(!menu.popUp(positioning: nil, at: NSPoint(x: 100, y: 100), in: nil))
+        #expect(tracking.value == 1, "AppKit actually began native menu tracking")
+        #expect(released == 1)
+        #expect(!surface.isCapturing && surface.input == nil && !forwarder.isActive)
+        #expect(forwarder.pressedKeys.isEmpty && forwarder.pressedButtons.isEmpty)
+        #expect(log.events == [
+            .key(keycode: 30, pressed: true), .pointerButton(button: 0x110, pressed: true),
+            .key(keycode: 30, pressed: false), .pointerButton(button: 0x110, pressed: false),
+        ])
+    }
+
+    /// Run the actual nested run-loop modes used by controls, window
+    /// dragging and modal panels, without calling the key handler ourselves.
+    @Test(arguments: [RunLoop.Mode.eventTracking, .modalPanel])
+    func nestedLocalTrackingReleasesCapture(_ mode: RunLoop.Mode) {
+        surface.onRelease = { self.forwarder.deactivate() }
+        capture()
+        forwarder.keyDown(UInt16(kVK_ANSI_A), isRepeat: false)
+        let timer = Timer(timeInterval: 0.01, repeats: false) { _ in }
+        RunLoop.main.add(timer, forMode: mode)
+        defer { timer.invalidate(); window.close() }
+        RunLoop.main.run(mode: mode, before: Date(timeIntervalSinceNow: 0.1))
+        #expect(!surface.isCapturing && surface.input == nil && !forwarder.isActive)
+        #expect(forwarder.pressedKeys.isEmpty)
+        #expect(log.events == [.key(keycode: 30, pressed: true), .key(keycode: 30, pressed: false)])
+    }
+
     @Test func mappingStaysWithTheDrawnFrameWhileADrawableIsUnavailable() throws {
         let previous = try #require(surface.pointerMapping).frame
         let frame = try #require(display.latest)
@@ -592,10 +640,29 @@ final class EventLog {
         surface.cursorPosition = CursorPosition(x: 200, y: 100, shapeId: 1, visible: false)
         #expect(surface.cursorOverlayFrame == nil)
         surface.cursorPosition = CursorPosition(x: 200, y: 100, shapeId: 2, visible: true)
-        #expect(surface.cursorOverlayFrame == nil, "positions cannot use another shape's hotspot")
+        #expect(surface.cursorOverlayFrame != nil, "location survives a shape association change")
         surface.cursorPosition = CursorPosition(x: 200, y: 100, shapeId: 1, visible: true)
         surface.display = nil
         #expect(surface.cursorOverlayFrame == nil)
+        window.close()
+    }
+
+    @Test func aShapeOnlyUpdateKeepsTheLastVisiblePosition() throws {
+        let oldImage = try #require(RemoteCursorImage(RemoteCursorTests.shape(
+            [0xFFFF_FFFF, 0xFF00_0000, 0, 0], hot: (1, 1))))
+        surface.remoteCursor = .image(oldImage)
+        surface.cursorOutputScale = 2
+        let position = CursorPosition(x: 200, y: 100, shapeId: 1, visible: true)
+        surface.cursorPosition = position
+        #expect(surface.cursorOverlayFrame == CGRect(x: 99.5, y: 49.5, width: 1, height: 1))
+        var nextImage = oldImage
+        nextImage.id = 2
+        nextImage.hotX = 0
+        nextImage.hotY = 0
+        // Server may send only this shape and coalesce queued position events.
+        surface.remoteCursor = .image(nextImage)
+        #expect(surface.cursorPosition == position, "shape must not alter location or visibility")
+        #expect(surface.cursorOverlayFrame == CGRect(x: 100, y: 50, width: 1, height: 1))
         window.close()
     }
 
