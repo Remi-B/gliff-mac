@@ -1,7 +1,10 @@
 # 08 — render-full-chroma-metal
 
-Status: implemented on `feat/full-chroma-metal-rendering`, awaiting review and the
-live Dual420 run. Fixture pairs (synthetic, live CPU, live GPU) decode and
+Status: implemented on `feat/full-chroma-metal-rendering`; GPU live acceptance
+passes, CPU live acceptance is blocked by an auxiliary keyframe contract
+mismatch with the pinned server. [PR #9](https://github.com/Remi-B/gliff-mac/pull/9)
+remains a draft. Independent review's P2 recovery finding is fixed and covered
+by a regression. Fixture pairs (synthetic, live CPU, live GPU) decode and
 recombine bit-exact with upstream's reference. Dependencies:
 [07](../07-decode-and-display-h264/README.md).
 
@@ -44,9 +47,8 @@ recombination. Native H.264 4:4:4 decoding is not assumed or advertised.
 - Metal pipeline costs, native memory and pairing limits are recorded for task 12.
   Full-chroma support is a release gate, not inferred from a single-stream demo.
 
-From task 07: `H264Decoder` decodes one stream per frame and `VideoRenderer`
-converts each picture in a compute pass that matches upstream's reference
-byte for byte, then presents it with an aspect fit. Dual420 decodes main and aux
-(completion when both callbacks fired) and replaces the conversion pass with
-the recombination; presentation, `VideoDisplay` and the decode reports stay.
-Advertise Dual420 in `LiveSessionFactory` and the bridge's SSH target only then.
+The native pipeline advertises Dual420 and Single420. `H264Decoder` completes
+a Dual420 frame when both callbacks arrive, or fails it when either stream
+fails or a partner expires. Metal reconstructs full chroma before aspect-fit
+presentation. The implementation record distinguishes fixture checks, GPU
+native live acceptance and the unresolved CPU server compatibility failure.

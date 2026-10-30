@@ -7,7 +7,8 @@ This repository contains the app-owned Rust workspace, the Rust/Swift bridge
 (UniFFI facade, session driver, universal XCFramework and Swift package), secure SSH
 sessions, a native SwiftUI/AppKit app that connects to a real server, and pinned
 upstream source. The app displays H.264 video through VideoToolbox and Metal,
-including Dual420 full-chroma reconstruction (task 08, under validation/review).
+including Dual420 full-chroma reconstruction (task 08: GPU verified; CPU live
+acceptance blocked by a pinned-server keyframe contract mismatch).
 Remote input, cursor and clipboard are subsequent implementation tasks.
 
 ## Get started
