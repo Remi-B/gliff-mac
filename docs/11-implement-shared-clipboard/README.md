@@ -42,3 +42,7 @@ obsolete transfers instead of inventing a second clipboard protocol.
   budgets. Disk-full/provider failure produces a useful error and cleanup.
 - Progress/cancel and reconnect tests leave no pending pasteboard callbacks,
   incomplete transfer workers or unexpected retained file data.
+
+From task 06: the disabled `shareClipboard` preference
+(`Preferences.shareClipboardKey`) is in Settings. Clipboard ownership should
+belong to the window's `SessionController`, never be global.

@@ -1,6 +1,6 @@
 # 02 — audit-upstream-protocol-and-portability
 
-Status: in review — audit, contract, replay harness and live CPU/GPU captures done. Dependencies: [01](../01-setup-project-structure/README.md).
+Status: merged — audit, contract, replay harness and live CPU/GPU captures done. Dependencies: [01](../01-setup-project-structure/README.md).
 
 Results: [inventory](protocol-inventory.md), [session/video contract](session-video-contract.md),
 [portability audit](portability-audit.md), [fixtures](../../tests/fixtures/README.md),

@@ -3,20 +3,42 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0C39DE1AC4F540351293F98D /* GliffMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB8531E79195B0CF83A50139 /* GliffMacApp.swift */; };
 		1EFEFDB9C8347EB21745C702 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F267253A45FBAA629A01439F /* Cocoa.framework */; };
 		5B2935DC4A76E7350E7CC5D7 /* GliffCore in Frameworks */ = {isa = PBXBuildFile; productRef = 7EEF1ECB56CFAC1978109D7B /* GliffCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		3CA50BBDC2E778F6A6003AF9 /* GliffMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GliffMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		CB8531E79195B0CF83A50139 /* GliffMacApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GliffMacApp.swift; sourceTree = "<group>"; };
+		A1C0FFEE0000000000000002 /* GliffMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GliffMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F267253A45FBAA629A01439F /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
+
+/* Begin PBXContainerItemProxy section */
+		A1C0FFEE000000000000000B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F77248056B9AF5B3B31E6F9A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9B2CFDCAB18E6B44A5ED569D;
+			remoteInfo = GliffMac;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		5FB3129739C1B1C41EBC6F22 /* GliffMac */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = GliffMac;
+			sourceTree = "<group>";
+		};
+		A1C0FFEE0000000000000001 /* GliffMacTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = GliffMacTests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		2B4EDB23357AB1CE912BAC36 /* Frameworks */ = {
@@ -25,6 +47,13 @@
 			files = (
 				1EFEFDB9C8347EB21745C702 /* Cocoa.framework in Frameworks */,
 				5B2935DC4A76E7350E7CC5D7 /* GliffCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A1C0FFEE0000000000000005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -47,21 +76,13 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		5FB3129739C1B1C41EBC6F22 /* GliffMac */ = {
-			isa = PBXGroup;
-			children = (
-				CB8531E79195B0CF83A50139 /* GliffMacApp.swift */,
-			);
-			name = GliffMac;
-			path = GliffMac;
-			sourceTree = "<group>";
-		};
 		A009625359D70E74190CC1FB = {
 			isa = PBXGroup;
 			children = (
 				EA9D0F9CDB831B676625B3D2 /* Products */,
 				4004CCAA23D062A0FA9857AB /* Frameworks */,
 				5FB3129739C1B1C41EBC6F22 /* GliffMac */,
+				A1C0FFEE0000000000000001 /* GliffMacTests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -69,6 +90,7 @@
 			isa = PBXGroup;
 			children = (
 				3CA50BBDC2E778F6A6003AF9 /* GliffMac.app */,
+				A1C0FFEE0000000000000002 /* GliffMacTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -88,6 +110,9 @@
 			);
 			dependencies = (
 			);
+			fileSystemSynchronizedGroups = (
+				5FB3129739C1B1C41EBC6F22 /* GliffMac */,
+			);
 			name = GliffMac;
 			packageProductDependencies = (
 				7EEF1ECB56CFAC1978109D7B /* GliffCore */,
@@ -95,6 +120,27 @@
 			productName = GliffMac;
 			productReference = 3CA50BBDC2E778F6A6003AF9 /* GliffMac.app */;
 			productType = "com.apple.product-type.application";
+		};
+		A1C0FFEE0000000000000003 /* GliffMacTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1C0FFEE0000000000000007 /* Build configuration list for PBXNativeTarget "GliffMacTests" */;
+			buildPhases = (
+				A1C0FFEE0000000000000004 /* Sources */,
+				A1C0FFEE0000000000000005 /* Frameworks */,
+				A1C0FFEE0000000000000006 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A1C0FFEE000000000000000A /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A1C0FFEE0000000000000001 /* GliffMacTests */,
+			);
+			name = GliffMacTests;
+			productName = GliffMacTests;
+			productReference = A1C0FFEE0000000000000002 /* GliffMacTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -104,6 +150,11 @@
 			attributes = {
 				LastSwiftUpdateCheck = 1600;
 				LastUpgradeCheck = 1640;
+				TargetAttributes = {
+					A1C0FFEE0000000000000003 = {
+						TestTargetID = 9B2CFDCAB18E6B44A5ED569D;
+					};
+				};
 			};
 			buildConfigurationList = 576617D5253F278DB457D091 /* Build configuration list for PBXProject "GliffMac" */;
 			compatibilityVersion = "Xcode 14.0";
@@ -124,12 +175,20 @@
 			projectRoot = "";
 			targets = (
 				9B2CFDCAB18E6B44A5ED569D /* GliffMac */,
+				A1C0FFEE0000000000000003 /* GliffMacTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		2CE2601BDC0C159146850407 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A1C0FFEE0000000000000006 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -143,11 +202,25 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0C39DE1AC4F540351293F98D /* GliffMacApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A1C0FFEE0000000000000004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A1C0FFEE000000000000000A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9B2CFDCAB18E6B44A5ED569D /* GliffMac */;
+			targetProxy = A1C0FFEE000000000000000B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		8B1B86F013A2895F94CEE4C6 /* Debug */ = {
@@ -226,6 +299,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Gliff;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Gliff connects over SSH to Gliff servers on your local network.";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -309,6 +383,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Gliff;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Gliff connects over SSH to Gliff servers on your local network.";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -320,6 +395,42 @@
 				PRODUCT_NAME = GliffMac;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		A1C0FFEE0000000000000008 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.remi-b.gliff-mac.tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GliffMac.app/Contents/MacOS/GliffMac";
+			};
+			name = Debug;
+		};
+		A1C0FFEE0000000000000009 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.remi-b.gliff-mac.tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GliffMac.app/Contents/MacOS/GliffMac";
 			};
 			name = Release;
 		};
@@ -340,6 +451,15 @@
 			buildConfigurations = (
 				ECA7E6BC6D7CD683DAAD2A3B /* Release */,
 				8EBFA4BFDD0AAFFF68F9E0D5 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1C0FFEE0000000000000007 /* Build configuration list for PBXNativeTarget "GliffMacTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1C0FFEE0000000000000008 /* Debug */,
+				A1C0FFEE0000000000000009 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

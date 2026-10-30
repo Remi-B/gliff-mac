@@ -84,6 +84,7 @@ scripts/bootstrap.sh       # once per clone: toolchain, Apple targets, submodule
 scripts/build-bridge.sh    # Rust bridge → GliffCore package artifacts
 swift test --package-path macos/Packages/GliffCore
 scripts/build-app.sh       # runs build-bridge.sh, then the universal Xcode build
+scripts/test-app.sh        # the app's hosted tests through the shared scheme
 ```
 
 `scripts/build-bridge.sh` is the single bridge entrypoint (Mac only, needs full Xcode for
@@ -127,7 +128,54 @@ Xcode app links the package and shows the core's build information. The threadin
 ordering, budget and teardown rules are in the [bridge contract](04-build-rust-swift-bridge/bridge-contract.md).
 
 Gates: `bridge-build` (the script), `swift-package` (package and tests built for arm64
-and x86_64), `bridge-import` (`swift test` on the host architecture) and `macos-app`.
+and x86_64), `bridge-import` (`swift test` on the host architecture), `macos-app` and
+`app-tests`.
+
+## Native app
+
+`scripts/build-app.sh` is the documented clean build: it regenerates the bridge,
+then runs
+
+```bash
+xcodebuild -project macos/GliffMac.xcodeproj -scheme GliffMac -configuration Debug \
+  -destination 'generic/platform=macOS' -derivedDataPath build/DerivedData \
+  'ARCHS=arm64 x86_64' ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO build
+```
+
+`scripts/test-app.sh` runs the scheme's test action on the host architecture
+(`xcodebuild … -destination "platform=macOS,arch=$(uname -m)" test`). The hosted
+`GliffMacTests` bundle (Swift Testing, macOS 14+) covers the view model with a
+fake session, persistence, the quit drain and the real `LiveSession` over
+recorded streams. The project uses file-system synchronized folders: new files
+under `macos/GliffMac` or `macos/GliffMacTests` join their target without
+project edits (Xcode 16 or later).
+
+`SessionController` (one per window, main actor) owns the connection form and
+phases, and ignores callbacks from sessions it replaced. `SessionRegistry` owns
+every started session until the bridge reports its end, so closing a window or
+quitting never orphans SSH. Views use only controller types, never bridge or
+upstream records. See the [task 06 record](06-create-native-macos-app/implementation-record.md).
+
+A Finder-launched app is the responsible process for its `/usr/bin/ssh` child.
+macOS Local Network privacy therefore applies to it: allow Gliff once in
+System Settings › Privacy & Security › Local Network to reach `.local` and other
+LAN hosts. A missing grant shows up as an immediate "could not reach the host".
+Launching the binary from Terminal hides this, because Terminal is the
+responsible process.
+
+For live checks, debug builds read a one-shot `GliffDebugAutoConnect` default (a
+JSON `ConnectionRequest`), remove it and connect, so a Finder launch needs no UI
+scripting:
+
+```bash
+defaults write com.remi-b.gliff-mac GliffDebugAutoConnect -string \
+  '{"host":"HOST","user":"","port":"","identityFile":"/Users/me/.ssh/id_ed25519","serverPath":"/abs/gliff-server","headless":true}'
+osascript -e 'tell application "Finder" to open POSIX file "'"$PWD"'/build/DerivedData/Build/Products/Debug/GliffMac.app"'
+log stream --predicate 'subsystem == "com.remi-b.gliff-mac"' --info
+```
+
+The log records phases and quit draining, never hosts, users or paths. Release
+builds do not contain the hook.
 Intel runtime is not covered on Apple silicon without Rosetta; it is a hardware gate.
 
 ## Workspaces and dependency updates
@@ -163,9 +211,10 @@ Ignore `target/`, `build/`, SwiftPM/Xcode caches and generated bridge artifacts.
 Fixtures will include exact source/settings/checksums without private desktop data.
 
 Initial distribution is outside App Sandbox. The project enables hardened runtime
-as a baseline but adds no incoming-network/capture entitlements or signing secrets.
-System SSH config, agent and Finder launch behavior need validation in later session
-and release tasks; an entitlement alone does not establish access.
+as a baseline but adds no entitlements (no incoming network, capture or Apple
+events) or signing secrets. The Info.plist declares `NSLocalNetworkUsageDescription`
+for LAN servers. Task 06 validated subprocess, SSH config/agent and filesystem
+behaviour in a Finder-launched app; signing and notarization are task 13.
 
 ## GUI SSH transport and headless probe
 

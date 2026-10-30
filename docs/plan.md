@@ -1,7 +1,7 @@
 # Gliff macOS implementation plan
 
-Status: tasks 01–04 merged; task 05 in review; tasks 06–13 planned.
-Updated on 2026-10-29.
+Status: tasks 01–05 merged; task 06 in review; tasks 07–13 planned.
+Updated on 2026-10-30.
 
 Planning location: this specification/plan/task collection is versioned under
 `docs/`, alongside the application build/development documentation.
@@ -99,7 +99,7 @@ as the initial baseline, then validate each subsequent pin explicitly.
 ## Ordered tasks
 
 Each task has scope, dependencies, deliverables, and acceptance criteria in its
-folder. Tasks 01–04 are **merged**, including local macOS and live-server validation; task 05 is **in review**; tasks 06–13 are **planned**. The order prioritizes repository ownership,
+folder. Tasks 01–05 are **merged**, including local macOS and live-server validation; task 06 is **in review**; tasks 07–13 are **planned**. The order prioritizes repository ownership,
 compatibility, and build risks before UI breadth.
 
 | # | Task | Depends on | Completion evidence |
@@ -108,8 +108,8 @@ compatibility, and build risks before UI breadth.
 | 02 | [audit-upstream-protocol-and-portability](02-audit-upstream-protocol-and-portability/README.md) | 01 | Real contract fixtures; selected crates compile on macOS; platform boundary verified — **merged**: contracts, fixtures, portable boundary and real CPU/GPU captures |
 | 03 | [automate-upstream-sync-and-compatibility](03-automate-upstream-sync-and-compatibility/README.md) | 02 | Repeatable upstream bump/revert and compatibility CI; later gates added as implemented — **merged**: tooling, gates, CI, records and live-host checks; bump/rollback rehearsed |
 | 04 | [build-rust-swift-bridge](04-build-rust-swift-bridge/README.md) | 02 | Repeatable bindings/XCFramework and Swift import/callback smoke test — **merged**: driver, UniFFI facade, universal bridge, Swift package tests and app link |
-| 05 | [implement-ssh-session](05-implement-ssh-session/README.md) | 03, 04 | Authenticated headless SSH and Finder-launch transport probes; bounded video delivery, acknowledgments and clean cancellation — **in review** |
-| 06 | [create-native-macos-app](06-create-native-macos-app/README.md) | 04 | Native app shell; typed session UI; deterministic Xcode build |
+| 05 | [implement-ssh-session](05-implement-ssh-session/README.md) | 03, 04 | Authenticated headless SSH and Finder-launch transport probes; bounded video delivery, acknowledgments and clean cancellation — **merged** |
+| 06 | [create-native-macos-app](06-create-native-macos-app/README.md) | 04 | Native app shell; typed session UI; deterministic Xcode build — **in review**: view model, live Finder-launched SSH session, app tests gate |
 | 07 | [decode-and-display-h264](07-decode-and-display-h264/README.md) | 05, 06 | Real VideoToolbox Single420 decode/presentation, Finder-to-server validation and feedback from native callbacks |
 | 08 | [render-full-chroma-metal](08-render-full-chroma-metal/README.md) | 07 | Dual420 pair decoding and reference-verified full-chroma rendering |
 | 09 | [implement-remote-input](09-implement-remote-input/README.md) | 07 | Focused pointer/keyboard control; escape; explicit keyboard-layout support |

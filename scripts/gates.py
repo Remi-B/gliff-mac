@@ -72,6 +72,8 @@ GATES = [
      [["swift", "test", "--package-path", PACKAGE]]),
     ("macos-app", "Universal Xcode app build (arm64 + x86_64)", True, "macos",
      [["scripts/build-app.sh"]]),
+    ("app-tests", "App view model, session lifecycle and persistence tests (Xcode)", True,
+     "macos", [["scripts/test-app.sh"]]),
     ("upstream-linux", "Upstream workspace fmt/clippy/tests with its own lockfile", True,
      "upstream-linux",
      [["cargo", "fmt", "--manifest-path", UPSTREAM, "--all", "--check"],

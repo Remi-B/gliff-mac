@@ -1,6 +1,6 @@
 # 03 — automate-upstream-sync-and-compatibility
 
-Status: in review — tooling, gates, CI, records and live-host workflow implemented; update/rollback rehearsed. Dependencies: [02](../02-audit-upstream-protocol-and-portability/README.md).
+Status: merged — tooling, gates, CI, records and live-host workflow implemented; update/rollback rehearsed. Dependencies: [02](../02-audit-upstream-protocol-and-portability/README.md).
 
 Results: [update runbook](upstream-update-workflow.md), [compatibility records](../../tests/compatibility/README.md),
 [implementation record](implementation-record.md).

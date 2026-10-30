@@ -1,6 +1,6 @@
 # Task 04 implementation record
 
-Updated: 2026-10-29. Branch `feat/build-rust-swift-bridge`. Status: in review.
+Updated: 2026-10-29. Branch `feat/build-rust-swift-bridge`. Status: merged (#5).
 Command output, gate summaries and review results are published on the pull request,
 not in the repository.
 

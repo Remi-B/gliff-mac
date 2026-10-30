@@ -1,6 +1,6 @@
 # 04 — build-rust-swift-bridge
 
-Status: in review — bridge, build entrypoint, Swift package, app link and gates implemented. Dependencies: [02](../02-audit-upstream-protocol-and-portability/README.md).
+Status: merged — bridge, build entrypoint, Swift package, app link and gates implemented. Dependencies: [02](../02-audit-upstream-protocol-and-portability/README.md).
 
 Results: [bridge contract](bridge-contract.md), [implementation record](implementation-record.md).
 
