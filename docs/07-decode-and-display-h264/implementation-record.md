@@ -1,6 +1,6 @@
 # Task 07 implementation record
 
-Updated: 2026-10-30. Branch `feat/decode-and-display-h264`. Status: in review.
+Updated: 2026-10-30. Branch `feat/decode-and-display-h264`. Status: merged (#8).
 Dependencies 05 and 06 are merged. Upstream remains the unmodified pinned
 `58c742452ded3f10a2ce61f60eb4845f18205e29` (`gliff-server 0.4.1`). No Rust
 or bridge change was needed: the task-04 contract already carried what the
@@ -133,6 +133,14 @@ connected to the unmodified pinned server on `omarchy-mbp.local`
 | 08:55:37.692 | Decoder session 1920×1080, hardware |
 | 09:08:59.439 | Quit: delivered 6,570, acked 6,570, decoded 6,570, failed 0, keyframe requests 0, presented 6,562, replaced 8, one decoder session |
 | 09:08:59.552 | Sessions ended cleanly (127 ms); no local SSH, no remote server, only `eDP-1` left |
+
+A later Finder launch of the final build (`a4290ed`) mirrored the real
+output instead (`--stdio`, no `--headless`): 2880×1800 Single420, one hardware
+decoder session; 482 frames delivered, acked, decoded and presented, none
+failed or replaced. The user saw their live omarchy desktop, with its
+windows, in the app. Quit ended the session cleanly in 113 ms, leaving no
+local SSH, no remote server and only `eDP-1`. Mirror mode is task 10's to
+qualify; this run only shows that the decoder handles the larger stream.
 
 The user checked the window: the headless desktop and the lock screen were
 visible, sharp and in the expected colours, and stayed letterboxed through

@@ -1,7 +1,8 @@
 # 07 — decode-and-display-h264
 
-Status: in review; fixture decode is bit-exact with upstream's reference, and a
-Finder-launched live session decoded and acknowledged 6,570 frames natively.
+Status: merged (#8); fixture decode is bit-exact with upstream's reference, and
+Finder-launched live sessions (headless and mirrored) were decoded and
+acknowledged natively.
 Dependencies: [05](../05-implement-ssh-session/README.md),
 [06](../06-create-native-macos-app/README.md).
 
