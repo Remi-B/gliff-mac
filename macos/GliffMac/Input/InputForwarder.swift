@@ -19,6 +19,8 @@ final class InputForwarder {
     private let sink: Sink
     private let onFailure: @MainActor () -> Void
     private(set) var failed = false
+    private(set) var isActive: Bool
+    private var ended = false
     private let currentLayout: @MainActor () -> KeyboardLayout
     private let hardware: @MainActor () -> KeyCodes.Hardware
     /// macOS key code → evdev code sent for its press.
@@ -32,12 +34,14 @@ final class InputForwarder {
 
     init(
         layout: KeyboardLayout?,
+        active: Bool = true,
         currentLayout: @escaping @MainActor () -> KeyboardLayout = KeyboardLayout.current,
         hardware: @escaping @MainActor () -> KeyCodes.Hardware = { KeyCodes.Hardware.current },
         onFailure: @escaping @MainActor () -> Void = {},
         sink: @escaping Sink
     ) {
         self.layout = layout
+        self.isActive = active
         self.currentLayout = currentLayout
         self.hardware = hardware
         self.sink = sink
@@ -59,7 +63,7 @@ final class InputForwarder {
     }
 
     func keyDown(_ keyCode: UInt16, isRepeat: Bool) {
-        guard !isRepeat, pressedKeys[keyCode] == nil,
+        guard isActive, !isRepeat, pressedKeys[keyCode] == nil,
             let code = KeyCodes.evdev(keyCode, hardware: hardware())
         else { return }
         syncLayout()
@@ -67,7 +71,7 @@ final class InputForwarder {
     }
 
     func keyUp(_ keyCode: UInt16) {
-        guard let code = pressedKeys.removeValue(forKey: keyCode) else { return }
+        guard isActive, let code = pressedKeys.removeValue(forKey: keyCode) else { return }
         send(.key(keycode: code, pressed: false))
     }
 
@@ -75,6 +79,7 @@ final class InputForwarder {
     /// device bits in `modifierFlags`; Caps Lock reports each toggle once,
     /// so it is a full press and release on the remote; Fn stays local.
     func flagsChanged(_ keyCode: UInt16, modifierFlags: UInt) {
+        guard isActive else { return }
         if Int(keyCode) == kVK_CapsLock {
             syncLayout()
             send(.key(keycode: KeyCodes.keyCapsLock, pressed: true))
@@ -100,11 +105,12 @@ final class InputForwarder {
     // MARK: Pointer
 
     func move(to point: CGPoint) {
+        guard isActive else { return }
         send(.pointerMotion(x: point.x, y: point.y))
     }
 
     func button(_ number: Int, pressed: Bool) {
-        guard !failed, let button = PointerEvents.evdevButton(number) else { return }
+        guard isActive, !failed, let button = PointerEvents.evdevButton(number) else { return }
         if pressed {
             guard pressedButtons.insert(button).inserted else { return }
         } else {
@@ -114,12 +120,36 @@ final class InputForwarder {
     }
 
     func scroll(_ events: [InputEvent]) {
+        guard isActive else { return }
         for event in events {
             guard send(event) else { return }
             if case .scroll(let axis, _, let discrete, let stop) = event, discrete == nil {
                 if stop { scrollingAxes.remove(axis) } else { scrollingAxes.insert(axis) }
             }
         }
+    }
+
+    /// Gate events synchronously with controller state, even before SwiftUI
+    /// has updated a surface retaining this forwarder.
+    @discardableResult
+    func activate() -> Bool {
+        isActive = !failed && !ended
+        return isActive
+    }
+
+    func deactivate() {
+        releaseAll()
+        isActive = false
+    }
+
+    /// The remote session already ended/detached; its virtual devices are
+    /// gone. A stale surface must not send or report a new input failure.
+    func finish() {
+        ended = true
+        isActive = false
+        pressedKeys = [:]
+        pressedButtons = []
+        scrollingAxes = []
     }
 
     // MARK: Release
@@ -145,10 +175,11 @@ final class InputForwarder {
     /// releases held state; never continue typing with uncertain remote state.
     @discardableResult
     private func send(_ event: InputEvent) -> Bool {
-        guard !failed else { return false }
+        guard !failed, !ended else { return false }
         guard sink(event) else {
             dropped += 1
             failed = true
+            isActive = false
             pressedKeys = [:]
             pressedButtons = []
             scrollingAxes = []

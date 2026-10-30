@@ -354,7 +354,7 @@ struct RemoteSurface: NSViewRepresentable {
         }
 
         private var acceptsCapturedInput: Bool {
-            isCapturing && window?.isKeyWindow == true && window?.firstResponder === self
+            isCapturing && input?.isActive == true && window?.isKeyWindow == true && window?.firstResponder === self
         }
 
         // MARK: Keyboard

@@ -190,13 +190,13 @@ final class SessionController: ObservableObject {
     func captureInput() {
         guard isStreaming, let forwarder else { return }
         keyboardLayout = forwarder.syncLayout()
-        isCapturingInput = !forwarder.failed
+        isCapturingInput = forwarder.activate()
     }
 
     /// The release shortcut, focus loss and every phase change end capture,
     /// and release every key and button still down on the remote.
     func releaseInput() {
-        forwarder?.releaseAll()
+        forwarder?.deactivate()
         isCapturingInput = false
     }
 
@@ -222,7 +222,7 @@ final class SessionController: ObservableObject {
             }
             videoDisplay = session.videoDisplay
             forwarder = InputForwarder(
-                layout: session.keyboardLayout, currentLayout: currentLayout,
+                layout: session.keyboardLayout, active: false, currentLayout: currentLayout,
                 onFailure: { [weak self] in self?.inputFailed() },
                 sink: { [weak session] in session?.send($0) ?? false })
             keyboardLayout = session.keyboardLayout ?? currentLayout()
@@ -243,6 +243,7 @@ final class SessionController: ObservableObject {
 
     private func endCurrentSession() {
         releaseInput()
+        forwarder?.finish()
         if let id = currentSession { registry.cancel(id) }
         currentSession = nil
         videoDisplay = nil
@@ -278,7 +279,8 @@ final class SessionController: ObservableObject {
         case .cursorPosition(let position):
             remoteCursorPosition = position
         case .ended(let end):
-            releaseInput()
+            forwarder?.finish()
+            isCapturingInput = false
             currentSession = nil
             videoDisplay = nil
             forwarder = nil

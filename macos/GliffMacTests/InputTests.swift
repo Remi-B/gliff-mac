@@ -609,6 +609,15 @@ final class EventLog {
         window.close()
     }
 
+    @Test func aReleasedForwarderDoesNotSwallowLocalKeysBeforeTheViewUpdates() {
+        capture()
+        forwarder.deactivate()
+        #expect(!surface.handleKey(key(.keyDown, kVK_ANSI_Q, flags: .command)))
+        surface.mouseDown(with: mouse(.leftMouseDown, at: .zero))
+        #expect(log.events.isEmpty)
+        window.close()
+    }
+
     @Test func inactiveWindowCannotForwardPointerOrKeys() {
         capture()
         window.testIsKey = false

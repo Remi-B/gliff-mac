@@ -245,6 +245,30 @@ import Testing
         #expect(!controller.isCapturingInput)
     }
 
+    @Test func staleSurfaceInputCannotForwardAfterReleaseOrCancelAReplacement() throws {
+        controller.connect()
+        factory.last.becomeStreaming()
+        controller.captureInput()
+        let oldInput = try #require(controller.input)
+        let first = factory.last
+        controller.releaseInput()
+        let before = first.inputs.count
+        oldInput.keyDown(0, isRepeat: false)
+        oldInput.button(0, pressed: true)
+        #expect(first.inputs.count == before, "a delayed surface update cannot forward after release")
+        controller.captureInput()
+        oldInput.keyDown(0, isRepeat: false)
+        controller.reconnect()
+        factory.last.becomeStreaming()
+        controller.captureInput()
+        first.acceptsInput = false
+        oldInput.keyDown(1, isRepeat: false)
+        oldInput.move(to: .zero)
+        oldInput.syncLayout()
+        #expect(factory.last.cancelCount == 0 && controller.isCapturingInput)
+        #expect(!oldInput.isActive && oldInput.pressedKeys.isEmpty)
+    }
+
     @Test func rejectedInputDisconnectsAndOffersRecovery() throws {
         controller.connect()
         factory.last.becomeStreaming()

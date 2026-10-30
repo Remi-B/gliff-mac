@@ -38,7 +38,10 @@ stays local. Shift+Escape releases capture and is consumed. The toolbar/menu,
 first-responder loss, key-window loss, close, disconnect, reconnect and session
 end also release it. `InputForwarder` tracks physical keys and evdev buttons,
 drops auto-repeat and unpaired releases, and lifts every held input once.
-Teardown releases directly before waiting for a SwiftUI update; active finger
+Forwarders are deactivated synchronously on release, and permanently retired
+on session end/replacement. A stale surface cannot swallow local keys, send
+late input or cancel a new session while waiting for a SwiftUI update. Teardown
+releases directly; active finger
 scroll axes also receive stop events if capture ends mid-gesture.
 
 A rejected bridge input breaks ordering: a lost key-up could otherwise leave a
@@ -124,7 +127,7 @@ Local platform: macOS 27.0.1 arm64, Apple M4 Pro, Xcode 27.1, Rust 1.90.0.
 
 | Criterion | Evidence |
 | --- | --- |
-| App suites | `scripts/test-app.sh`: 96 tests in 16 suites passed |
+| App suites | `scripts/test-app.sh`: 98 tests in 16 suites passed |
 | Coordinates/buttons/scrolling | `PointerMappingTests`: letterbox/pillarbox corners, clamping, Retina 1/2, effective scale, downscaled cursor coordinates, evdev buttons, wheel/finger axes/stops |
 | Keys and layouts | `KeyCodeTests`, `KeyboardLayoutTests`: positions, ANSI/ISO swap, left/right modifiers, unsupported fallback, derivation for ANSI/ISO Apple data, safe Unicode/dead-symbol encoding |
 | Release and queue failures | `InputForwarderTests`, `SessionControllerTests`: repeat filtering, keymap ordering, held-state cleanup, reconnect/end, rejected map/release cancels once |
