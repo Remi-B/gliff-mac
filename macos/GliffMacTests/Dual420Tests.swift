@@ -788,15 +788,15 @@ enum ChromaTolerance {
     @Test func racingHalvesAndDeadlinesSettleEachJobOnce() async {
         let jobs = (0..<2000).map { Self.job(UInt64($0)) }
         let settled = OSAllocatedUnfairLock(initialState: [Int](repeating: 0, count: jobs.count))
-        nonisolated(unsafe) let picture = Self.buffer()
+        let picture = SharedTestPicture(buffer: Self.buffer())
         await withTaskGroup(of: Void.self) { group in
             for (index, job) in jobs.enumerated() {
                 for action in 0..<3 {
                     group.addTask {
                         let outcome: FrameJob.Outcome? =
                             switch action {
-                            case 0: job.record(.main, .image(picture))
-                            case 1: job.record(.aux, index % 5 == 0 ? .failed(-1) : .image(picture))
+                            case 0: job.record(.main, .image(picture.buffer))
+                            case 1: job.record(.aux, index % 5 == 0 ? .failed(-1) : .image(picture.buffer))
                             default: job.expire()
                             }
                         if outcome != nil { settled.withLock { $0[index] += 1 } }
@@ -806,6 +806,12 @@ enum ChromaTolerance {
         }
         #expect(settled.withLock { $0 }.allSatisfy { $0 == 1 })
     }
+}
+
+/// The stress test shares this immutable buffer across child tasks. A wrapper
+/// makes that ownership explicit for Swift 6.1's sending-closure checking.
+private struct SharedTestPicture: @unchecked Sendable {
+    let buffer: CVPixelBuffer
 }
 
 @MainActor
