@@ -126,8 +126,9 @@ Hyprland 0.56, unmodified server at the pin. Evidence:
 
 - A server killed with SIGKILL cannot remove its headless output: Hyprland keeps
   `gliff-<pid>` until removed by hand. Normal teardown, a stalled server once resumed
-  and sshd loss all clean up. This is an upstream server limitation; the client cannot
-  remove the output.
+  and sshd loss all clean up. This is an upstream server limitation. After merge, a
+  monitor tool disabling the output mid-session left one too;
+  [task 14](../14-clean-up-orphan-monitors/README.md) removes orphans from the client.
 - On the test network the host's global IPv6 address does not answer SSH. With the
   policy's `ConnectTimeout 10`, OpenSSH spends the whole 10 seconds on it before IPv4,
   so every connection (and reconnection) to that host takes about 10 seconds longer;
@@ -158,5 +159,6 @@ quoting, persistence, `SystemEvents` threading or the layout callback.
 - Interactive window resizing, full screen and moving between Retina and non-Retina
   displays in the GUI (no UI scripting permission): the same surface report and
   controller path is covered by tests and the GUI's initial and reconnect sizes.
+  After review, the user resized the window by hand on 2026-10-31 and accepted it.
 - A real sleep/wake cycle of this Mac; covered by controller tests only.
 - Intel macOS runtime (compile-only, as before).

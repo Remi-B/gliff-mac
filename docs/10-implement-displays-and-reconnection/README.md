@@ -1,8 +1,9 @@
 # 10 — implement-displays-and-reconnection
 
-Status: in review; implemented with unit, replay and live-host checks (see the
-[implementation record](implementation-record.md)). GUI window/full-screen/Retina
-moves and a real sleep/wake cycle remain manual acceptance. Dependencies: [08](../08-render-full-chroma-metal/README.md),
+Status: merged (#11); implemented with unit, replay and live-host checks (see the
+[implementation record](implementation-record.md)). The user accepted GUI resizing
+on 2026-10-31; a real sleep/wake cycle remains manual acceptance. Orphaned outputs
+are handled by [task 14](../14-clean-up-orphan-monitors/README.md). Dependencies: [08](../08-render-full-chroma-metal/README.md),
 [09](../09-implement-remote-input/README.md).
 
 ## Outcome
