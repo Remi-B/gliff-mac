@@ -658,8 +658,15 @@ async fn cancellation_and_the_time_limit_reap_the_process_group() {
                 "{result:?}"
             );
         }
+        // The direct child is reaped by `run_bounded`; a killed grandchild
+        // is reaped by init a moment later.
+        assert_eq!(
+            test_kill_process(pids[0]),
+            Err(rustix::io::Errno::SRCH),
+            "the child was not reaped"
+        );
         for pid in pids {
-            assert_eq!(test_kill_process(pid), Err(rustix::io::Errno::SRCH));
+            assert!(gone(pid).await, "PID {pid} survived");
         }
     }
     // Cancelled before starting: nothing runs.

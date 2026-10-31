@@ -273,6 +273,10 @@ async fn run_bounded(
     // Also covers SSH exiting while a proxy helper or remote child lingers.
     group.terminate().await;
     group.armed = false;
+    // Reap SSH now rather than through the runtime's orphan queue: after a
+    // cancellation or the time limit nothing else waited for it.
+    let _ = child.start_kill();
+    let _ = child.wait().await;
     let Some(result) = finished else {
         return Ok(Run::Cancelled);
     };
