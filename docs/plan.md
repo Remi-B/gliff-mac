@@ -1,7 +1,12 @@
 # Gliff macOS implementation plan
 
-Status: tasks 01–10 merged; tasks 14 and 11–13 planned (14 first).
-Updated on 2026-10-31.
+## Status
+
+Updated on 2026-10-31. Each column lists its tasks in planned order.
+
+| Todo | In Progress | In Review | Done |
+| --- | --- | --- | --- |
+| `14` `11` `12` `13` | — | — | `01` `02` `03` `04` `05` `06` `07` `08` `09` `10` |
 
 Planning location: this specification/plan/task collection is versioned under
 `docs/`, alongside the application build/development documentation.
