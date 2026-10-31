@@ -6,7 +6,7 @@ Updated on 2026-10-31. Each column lists its tasks in planned order.
 
 | Todo | In Progress | In Review | Done |
 | --- | --- | --- | --- |
-| `14` `11` `12` `13` | — | — | `01` `02` `03` `04` `05` `06` `07` `08` `09` `10` |
+| `11` `12` `13` | — | `14` | `01` `02` `03` `04` `05` `06` `07` `08` `09` `10` |
 
 Planning location: this specification/plan/task collection is versioned under
 `docs/`, alongside the application build/development documentation.
@@ -105,7 +105,7 @@ as the initial baseline, then validate each subsequent pin explicitly.
 
 Each task has scope, dependencies, deliverables, and acceptance criteria in its
 folder. Tasks 01–10 are **merged**, with CPU Dual420 acceptance still blocked;
-tasks 14 and 11–13 are **planned**. Task 14 was added after task 10 and is listed
+task 14 is **in review** and tasks 11–13 are **planned**. Task 14 was added after task 10 and is listed
 where it is scheduled, before task 11. The order prioritizes repository ownership,
 compatibility, and build risks before UI breadth.
 
@@ -121,7 +121,7 @@ compatibility, and build risks before UI breadth.
 | 08 | [render-full-chroma-metal](08-render-full-chroma-metal/README.md) | 07 | Dual420 pair decoding and reference-verified full-chroma rendering — **CPU acceptance blocked**: 75 native tests pass, GPU native SSH/resize verified; pinned CPU server's auxiliary keyframe fails the existing contract |
 | 09 | [implement-remote-input](09-implement-remote-input/README.md) | 07 | Focused pointer/keyboard control; escape; explicit keyboard-layout support — **merged** (#10): input, Apple-derived U.S./French maps and remote cursor implemented; native headless text/dead-key smoke passed; interactive/hardware acceptance pending |
 | 10 | [implement-displays-and-reconnection](10-implement-displays-and-reconnection/README.md) | 08, 09 | Mirror/headless modes, resize, reconnect and session cleanup — **merged** (#11): output selection, settled resize, liveness, bounded automatic reconnect, sleep/wake; live resize/mirror/kill/stall/drop/cycle checks passed; GUI resize accepted by the user; real sleep/wake acceptance pending |
-| 14 | [clean-up-orphan-monitors](14-clean-up-orphan-monitors/README.md) | 10 | Orphaned `gliff-<pid>` outputs detected after each connection and removed on confirmation (automatic setting off by default); outputs of running sessions never touched |
+| 14 | [clean-up-orphan-monitors](14-clean-up-orphan-monitors/README.md) | 10 | Orphaned `gliff-<pid>` outputs detected after each connection and removed on confirmation (automatic setting off by default); outputs of running sessions never touched — **in review**: bridge check/removal over a separate SSH command, sheet, Ignore and automatic setting; verified live on Omarchy with the unmodified server; a host without Hyprland is covered by tests only; upstream fix proposed separately |
 | 11 | [implement-shared-clipboard](11-implement-shared-clipboard/README.md) | 05, 06, 10 | On-demand text/image/file clipboard, cancellation and session isolation |
 | 12 | [validate-performance-and-end-to-end](12-validate-performance-and-end-to-end/README.md) | 03, 08, 09, 10, 11 | Cross-platform acceptance, measured latency/memory/quality, and [real SSH multi-hop implementation/validation](12-validate-performance-and-end-to-end/ssh-multi-hop.md) |
 | 13 | [package-and-release-macos](13-package-and-release-macos/README.md) | 12 | Tested universal app, signing/notarization workflow and release provenance |

@@ -1,0 +1,104 @@
+{
+ "date": "2026-10-31",
+ "host": "Omarchy, Hyprland 0.56 (Lua configuration)",
+ "steps": [
+  "App launched from this shell with the GliffDebugAutoConnect hook (headless, unmodified server at the upstream pin); a second client (display_probe hold 300) kept its own session running throughout.",
+  "Connection 1: check found nothing (the other client's output is in use).",
+  "SIGKILL of the app's server: automatic reconnection, then the sheet offered gliff-519040 (accessibility tree: title, explanation, name, 2476x1766, removal note, Ignore/Remove). Ignore clicked.",
+  "SIGKILL again: 2 found, the ignored one not offered; the sheet offered gliff-520688 only. Remove clicked: row 'Removed', summary 'Removed 1 orphaned virtual monitor.', Done.",
+  "Setting turned on (defaults), SIGKILL twice: removed without a sheet; the status bar showed 'Removed 1 orphaned virtual monitor.'.",
+  "Quit (Command-Q): 'sessions ended cleanly'. The ignored gliff-519040 was then removed with monitor_probe. Host: outputs eDP-1 only, 0 servers; Mac: 0 SSH processes. Setting key deleted again."
+ ],
+ "log": [
+  {
+   "time": "2026-10-31 09:08:54.537",
+   "category": "session",
+   "message": "reconnecting(starting) attempt 1/5: SSH session ended unexpectedly. Check the network and server diagnostics. session-2"
+  },
+  {
+   "time": "2026-10-31 09:09:07.910",
+   "category": "session",
+   "message": "streaming(1920x1080) session-2"
+  },
+  {
+   "time": "2026-10-31 09:09:18.432",
+   "category": "monitors",
+   "message": "orphaned monitors: 1 found, 0 ignored before: gliff-519040"
+  },
+  {
+   "time": "2026-10-31 09:09:48.731",
+   "category": "monitors",
+   "message": "orphaned monitors: ignored 1: gliff-519040"
+  },
+  {
+   "time": "2026-10-31 09:09:51.391",
+   "category": "session",
+   "message": "reconnecting(starting) attempt 1/5: SSH session ended unexpectedly. Check the network and server diagnostics. session-3"
+  },
+  {
+   "time": "2026-10-31 09:10:01.944",
+   "category": "session",
+   "message": "streaming(1920x1080) session-3"
+  },
+  {
+   "time": "2026-10-31 09:10:12.427",
+   "category": "monitors",
+   "message": "orphaned monitors: 2 found, 1 ignored before: gliff-519040 gliff-520688"
+  },
+  {
+   "time": "2026-10-31 09:10:38.489",
+   "category": "monitors",
+   "message": "orphaned monitors: removed 1 gliff-520688; in use 0 ; failed 0"
+  },
+  {
+   "time": "2026-10-31 09:11:00.192",
+   "category": "session",
+   "message": "reconnecting(starting) attempt 1/5: SSH session ended unexpectedly. Check the network and server diagnostics. session-4"
+  },
+  {
+   "time": "2026-10-31 09:11:12.604",
+   "category": "session",
+   "message": "streaming(1920x1080) session-4"
+  },
+  {
+   "time": "2026-10-31 09:11:23.027",
+   "category": "monitors",
+   "message": "orphaned monitors: 2 found, 1 ignored before: gliff-519040 gliff-521895"
+  },
+  {
+   "time": "2026-10-31 09:11:33.548",
+   "category": "monitors",
+   "message": "orphaned monitors: removed 1 gliff-521895; in use 0 ; failed 0"
+  },
+  {
+   "time": "2026-10-31 09:11:51.286",
+   "category": "session",
+   "message": "reconnecting(starting) attempt 1/5: SSH session ended unexpectedly. Check the network and server diagnostics. session-5"
+  },
+  {
+   "time": "2026-10-31 09:12:01.970",
+   "category": "session",
+   "message": "streaming(1920x1080) session-5"
+  },
+  {
+   "time": "2026-10-31 09:12:12.312",
+   "category": "monitors",
+   "message": "orphaned monitors: 2 found, 1 ignored before: gliff-519040 gliff-523282"
+  },
+  {
+   "time": "2026-10-31 09:12:22.829",
+   "category": "monitors",
+   "message": "orphaned monitors: removed 1 gliff-523282; in use 0 ; failed 0"
+  },
+  {
+   "time": "2026-10-31 09:12:35.262",
+   "category": "lifecycle",
+   "message": "quit: cancelling 1 session(s)"
+  },
+  {
+   "time": "2026-10-31 09:12:35.314",
+   "category": "lifecycle",
+   "message": "quit: sessions ended cleanly"
+  }
+ ]
+}

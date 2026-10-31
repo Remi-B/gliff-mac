@@ -86,6 +86,7 @@ struct RemoteSurfaceView: View {
                 Label("Reconnected \(controller.reconnectCount)×", systemImage: "arrow.triangle.2.circlepath")
                     .help("The connection was lost and restored automatically in this window.")
             }
+            OrphanMonitorNotice(monitors: controller.monitors)
             if let message = controller.serverMessage {
                 Label(message, systemImage: "exclamationmark.bubble")
                     .lineLimit(1)

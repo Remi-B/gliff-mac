@@ -133,8 +133,9 @@ and x86_64), `bridge-import` (`swift test` on the host architecture), `macos-app
 `metal-chroma` (the Dual420 suites: `ChromaRecombinationTests`,
 `Dual420DecoderTests`, `FrameJobTests`, `ColorSignallingTests`), plus
 `remote-input` (the input suites of the app tests) and `displays-reconnect`
-(the driver's liveness tests, the SSH command tests and the reconnection,
-resize, request and lifecycle suites of the app tests).
+(the driver's liveness tests, the SSH command tests, the orphaned-monitor bridge
+tests and the reconnection, resize, request, lifecycle and orphaned-monitor
+suites of the app tests).
 
 ## Native app
 
@@ -216,6 +217,15 @@ pings a server silent for 5 seconds and fails the session after 15 seconds of
 silence. `scripts/live-displays-check.sh HOST USER IDENTITY` runs the live resize,
 mirror, kill, stall, network-drop and connect/cancel checks with
 `examples/display_probe` and checks the host and the Mac for leftovers.
+
+Orphaned virtual monitors ([task 14 record](14-clean-up-orphan-monitors/implementation-record.md)):
+after every connection, a separate SSH command with the session's policy runs a
+fixed script that lists `gliff-<pid>` outputs whose server no longer runs. A sheet
+offers to remove them (Ignore is remembered per window); Settings › Virtual
+monitors removes them without asking. A host without Hyprland is skipped.
+`scripts/live-monitors-check.sh HOST USER IDENTITY` checks it live with a running
+session, a killed one and a stray output, and checks for leftovers;
+`examples/monitor_probe` runs a single check or removal.
 
 `SessionController` (one per window, main actor) owns the connection form and
 phases, and ignores callbacks from sessions it replaced. `SessionRegistry` owns
