@@ -53,7 +53,7 @@ flowchart LR
 | `state()` | Connecting before start, handshaking until first stream configuration, streaming, stopping, closed or failed |
 | `stats()` | Counters: configs, frames delivered/dropped/failed, acks, keyframe requests, pongs, inputs, in-flight peaks |
 | `SessionDelegate` | `onConnected`, `onVideoConfig`, `onFrame`, `onCursorShape`, `onCursorPosition`, `onServerError`, `onEnded` |
-| `SessionEnd` | `closed`, `cancelled` or `failed(GliffError)`; `isFatalIncompatibility` says whether reconnecting can help |
+| `SessionEnd` | `closed`, `cancelled` or `failed(GliffError)`; `isFatalIncompatibility` says whether reconnecting can help. Since task 10, `Transport` is a link failure an app may retry automatically, and `Setup` (host key, key authentication, missing server) needs the user's action first |
 
 Clipboard messages are read and ignored, and no clipboard feature is advertised; task 11
 adds clipboard callbacks and commands on this delegate/session pair. No wire API is

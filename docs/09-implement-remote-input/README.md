@@ -1,6 +1,6 @@
 # 09 — implement-remote-input
 
-Status: in review; implemented with local tests, a native headless input
+Status: merged (#10); implemented with local tests, a native headless input
 smoke and user-verified interactive input. Broader hardware acceptance remains
 open. Dependencies: [07](../07-decode-and-display-h264/README.md).
 
