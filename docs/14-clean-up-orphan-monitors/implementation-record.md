@@ -2,7 +2,7 @@
 
 Updated 2026-10-31. Branch `feat/orphan-monitor-cleanup`, based on merged task 10
 `d0373b6`. Upstream stays unmodified at `58c742452ded3f10a2ce61f60eb4845f18205e29`
-(Gliff 0.4.1); the server-side fix is a separate [proposal](upstream-proposal.md).
+(Gliff 0.4.1); the server-side fix is a separate [upstream issue draft](../upstream-issues/headless-output-outlives-server.md).
 
 ## What an orphan is
 

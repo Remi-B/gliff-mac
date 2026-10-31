@@ -1,9 +1,15 @@
-# Upstream proposal: headless outputs that outlive their server
+# Headless output outlives its server
 
-Draft for an issue on [`omacom/gliff`](https://github.com/omacom/gliff), written against
-the pinned revision `58c742452ded3f10a2ce61f60eb4845f18205e29` (Gliff 0.4.1). Not filed:
-publishing it is the maintainer's decision. The macOS app keeps no patch to the
-vendored server; task 14 only cleans up after it.
+- **Repository:** [`omacom/gliff`](https://github.com/omacom/gliff)
+- **Title:** Headless `gliff-<pid>` output stays in Hyprland when the server is killed or its output is disabled
+- **Status:** draft, not filed. Written against `58c742452ded3f10a2ce61f60eb4845f18205e29`
+  (Gliff 0.4.1); check the current upstream code before filing.
+- **Origin:** task [14](../14-clean-up-orphan-monitors/README.md). The macOS app keeps no
+  patch to the vendored server and only cleans up after it.
+
+Everything below the line is the issue body.
+
+---
 
 ## Problem
 
@@ -47,6 +53,7 @@ workspaces and windows, in two cases reproduced on Hyprland 0.56 (Lua configurat
 
 ## Evidence
 
-`scripts/live-monitors-check.sh` and the [implementation record](implementation-record.md)
-in this repository: every SIGKILL of the server left its output; a disabled output
-was removed only after being enabled.
+Reproduced on Hyprland 0.56 with the unmodified server: every SIGKILL of the server
+left its output, and a disabled output could be removed only after being enabled
+again. (gliff-mac: `scripts/live-monitors-check.sh` and the
+[task 14 implementation record](../14-clean-up-orphan-monitors/implementation-record.md).)

@@ -71,7 +71,7 @@ outside the repository: `~/Projects/Gliff/utils/list-monitors.sh` and
 - [x] Propose the server-side fix upstream separately (verify or retry the removal,
   survive a disabled/re-enabled output, remove its own stale outputs at startup);
   the app keeps no patch to the vendored server. Drafted in
-  [upstream-proposal.md](upstream-proposal.md); filing it upstream is the user's call.
+  [an upstream issue draft](../upstream-issues/headless-output-outlives-server.md), to file later.
 
 ## Deliverables and acceptance
 
