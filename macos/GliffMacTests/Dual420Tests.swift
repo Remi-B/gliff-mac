@@ -597,6 +597,42 @@ enum ChromaTolerance {
         }
     }
 
+    /// A reconnect replaces the session and its decoder while the old one
+    /// still has pairs inside VideoToolbox. The new session restarts with
+    /// the same generation and frame numbers; late halves and completions of
+    /// the old decoder reach only the old session's reports and display.
+    @Test func lateHalvesAcrossAReconnectStayWithTheOldDecoder() async throws {
+        let items = try await VideoFixtures.items("live-cpu-dual420")
+        let frames = items.compactMap(\.frame)
+        for cut in [1, 5, 15] {
+            let oldLog = ReportLog(), newLog = ReportLog()
+            let old = H264Decoder(display: VideoDisplay(), report: oldLog.reporter)
+            let new = H264Decoder(display: VideoDisplay(), report: newLog.reporter)
+            let before = items.prefix(cut + 1)
+            before.forEach(old.handle)
+            // The link drops: the controller cancels the session, which
+            // invalidates its decoder, and starts the next one at once.
+            old.invalidate()
+            new.handle(items[0])
+            // Frames the old bridge had queued still arrive, interleaved
+            // with the new session's first frames.
+            for (late, fresh) in zip(items.dropFirst(cut + 1), items.dropFirst()) {
+                old.handle(late)
+                new.handle(fresh)
+            }
+            items.dropFirst(items.count - cut).forEach(new.handle)
+            old.invalidateAndWait()
+            new.waitUntilIdle()
+            #expect(Set(oldLog.all.map(\.id)).count == oldLog.all.count, "cut \(cut): one report per frame")
+            #expect(oldLog.all.dropFirst(before.compactMap(\.frame).count).allSatisfy { $0.outcome == .discarded })
+            #expect(old.display.latest == nil && old.pendingCount == 0)
+            #expect(frames.allSatisfy { newLog.outcome(of: $0.frameId) == [.decoded] }, "cut \(cut)")
+            #expect(new.display.latest?.frameID == frames.last?.frameId)
+            #expect(new.display.diagnostics.discarded == 0 && new.display.diagnostics.failed == 0)
+            new.invalidateAndWait()
+        }
+    }
+
     /// The renderer presents recombined pictures at any size, and redraws
     /// the cached one without recombining again.
     @Test func theRendererDrawsDualPicturesAtAnySize() async throws {

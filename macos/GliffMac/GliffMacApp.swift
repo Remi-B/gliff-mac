@@ -32,9 +32,12 @@ final class AppServices {
     let registry = SessionRegistry()
     let recents = RecentConnections()
     let factory: any SessionFactory = LiveSessionFactory()
+    let systemEvents = SystemEvents()
 
     func makeController() -> SessionController {
-        SessionController(factory: factory, registry: registry, recents: recents)
+        let controller = SessionController(factory: factory, registry: registry, recents: recents)
+        systemEvents.register(controller)
+        return controller
     }
 }
 

@@ -1,6 +1,8 @@
 # 10 — implement-displays-and-reconnection
 
-Status: planned. Dependencies: [08](../08-render-full-chroma-metal/README.md),
+Status: in review; implemented with unit, replay and live-host checks (see the
+[implementation record](implementation-record.md)). GUI window/full-screen/Retina
+moves and a real sleep/wake cycle remain manual acceptance. Dependencies: [08](../08-render-full-chroma-metal/README.md),
 [09](../09-implement-remote-input/README.md).
 
 ## Outcome
@@ -10,24 +12,24 @@ and app lifecycle transitions without stale video, input or child processes.
 
 ## Work
 
-- [ ] Support mirror selection and private/headless mode through upstream server
+- [x] Support mirror selection and private/headless mode through upstream server
   options and handshake output/session information. Follow actual server behavior
   rather than inventing new wire commands. Persist display mode with host metadata.
-- [ ] Debounce resize/fullscreen/Retina changes and send valid headless geometry.
+- [x] Debounce resize/fullscreen/Retina changes and send valid headless geometry.
   Mirror mode preserves remote dimensions and fits the view. Handle remote output
   removal, scale-only/fps-only configuration changes and server downscaling.
-- [ ] Add bounded reconnect backoff with cancellation. Retry recoverable link/setup
+- [x] Add bounded reconnect backoff with cancellation. Retry recoverable link/setup
   errors; surface fatal protocol/capability/auth failures without endless retries.
   Distinguish user disconnect from temporary network loss.
-- [ ] Start each reconnect with a new generation, fresh handshake/decoder state,
+- [x] Start each reconnect with a new generation, fresh handshake/decoder state,
   capability evaluation and correct input release. Reject callbacks from old SSH,
   session, decoder and display instances.
-- [ ] Handle sleep/wake and network changes, background/foreground and window close.
+- [x] Handle sleep/wake and network changes, background/foreground and window close.
   Bound queued input and avoid replaying old keystrokes after reconnect. Re-establish
   clipboard offers only under task 11's current ownership policy.
-- [ ] Verify SSH teardown removes headless outputs server-side. Ensure cancellation
+- [x] Verify SSH teardown removes headless outputs server-side. Ensure cancellation
   waits for workers/decoders and reaps the child even if a peer stalls.
-- [ ] Keep statistics for phase, retries, stream/chroma, decode delay and queue
+- [x] Keep statistics for phase, retries, stream/chroma, decode delay and queue
   pressure without logging desktop contents. Multi-session UI polish can follow,
   but lifecycle and active-owner state must already be per-session.
 

@@ -294,6 +294,7 @@ mod tests {
             server_path: None,
             identity_file: None,
             headless: true,
+            output: None,
             video_mode: VideoMode::Auto,
         };
         for chroma in [

@@ -49,9 +49,13 @@ enum VideoFixtures {
     }
 
     /// The same for any recorded stream, advertising what the app does.
+    /// One frame in flight: the driver cannot read the next configuration
+    /// before a frame is delivered, so a new generation never discards the
+    /// last frames of the previous one, whatever the thread timing.
     static func items(stream: Data) async throws -> [VideoItem] {
         let session = try GliffSession(
-            target: .replay(stream: stream), options: SessionOptions(chroma: LiveSession.chroma))
+            target: .replay(stream: stream),
+            options: SessionOptions(chroma: LiveSession.chroma, maxInFlightFrames: 1))
         let collected = OSAllocatedUnfairLock(initialState: (items: [VideoItem](), ended: false))
         let relay = SessionRelay(
             video: { [weak session] item in

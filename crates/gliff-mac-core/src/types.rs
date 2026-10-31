@@ -19,6 +19,9 @@ pub enum ConnectionTarget {
         server_path: Option<String>,
         identity_file: Option<String>,
         headless: bool,
+        /// Mirror mode only: the output to mirror (`--output`), such as
+        /// `DP-1`; `None` mirrors the focused output.
+        output: Option<String>,
         video_mode: VideoMode,
     },
     /// A recorded server-to-client stream (a `.gliffstream` fixture). Client
@@ -217,6 +220,13 @@ pub struct SessionStats {
     pub inputs_sent: u64,
     pub peak_in_flight_frames: u64,
     pub peak_in_flight_bytes: u64,
+    /// Liveness pings sent after server silence.
+    pub pings_sent: u64,
+    /// Frames awaiting a decode report now: queue pressure.
+    pub in_flight_frames: u64,
+    /// From a frame's arrival to its decode report, in microseconds.
+    pub decode_delay_last_us: u64,
+    pub decode_delay_max_us: u64,
 }
 
 /// How a session ended. Delivered once, as the last callback.
@@ -244,8 +254,14 @@ pub enum GliffError {
     Busy,
     #[error("frame {frame_id} is not awaiting a decode report")]
     UnknownFrame { frame_id: u64 },
+    /// The link failed or was lost; reconnecting may help.
     #[error("connection: {message}")]
     Transport { message: String },
+    /// SSH or the server setup refused this connection: host key, key
+    /// authentication or a missing server. Retrying unchanged fails the same
+    /// way until the user fixes it, so it is not retried automatically.
+    #[error("setup: {message}")]
+    Setup { message: String },
     /// The server broke the session/video contract. Not retryable.
     #[error("protocol contract: {message}")]
     Contract { message: String },
@@ -338,6 +354,8 @@ impl ConnectionTarget {
                 port,
                 server_path,
                 identity_file,
+                headless,
+                output,
                 ..
             } => {
                 check_word("host", host)?;
@@ -367,6 +385,22 @@ impl ConnectionTarget {
                 }
                 if *port == Some(0) {
                     return Err(invalid("port 0 is not a valid ssh port"));
+                }
+                if let Some(output) = output {
+                    if *headless {
+                        return Err(invalid("an output can only be chosen in mirror mode"));
+                    }
+                    if output.is_empty()
+                        || output.len() > 64
+                        || output.starts_with('-')
+                        || !output
+                            .bytes()
+                            .all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b))
+                    {
+                        return Err(invalid(
+                            "output must be an output name such as DP-1: ASCII letters, digits, '.', '_' or '-'",
+                        ));
+                    }
                 }
                 if let Some(path) = server_path {
                     check_word("server path", path)?;
@@ -523,6 +557,10 @@ impl From<core::Stats> for SessionStats {
             inputs_sent: s.inputs_sent,
             peak_in_flight_frames: s.peak_in_flight_frames,
             peak_in_flight_bytes: s.peak_in_flight_bytes,
+            pings_sent: s.pings_sent,
+            in_flight_frames: s.in_flight_frames,
+            decode_delay_last_us: s.decode_delay_last_us,
+            decode_delay_max_us: s.decode_delay_max_us,
         }
     }
 }

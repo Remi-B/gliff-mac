@@ -132,7 +132,9 @@ and x86_64), `bridge-import` (`swift test` on the host architecture), `macos-app
 `app-tests`, `video-decode` (the Single420 video suites of the app tests) and
 `metal-chroma` (the Dual420 suites: `ChromaRecombinationTests`,
 `Dual420DecoderTests`, `FrameJobTests`, `ColorSignallingTests`), plus
-`remote-input` (the input suites of the app tests).
+`remote-input` (the input suites of the app tests) and `displays-reconnect`
+(the driver's liveness tests, the SSH command tests and the reconnection,
+resize, request and lifecycle suites of the app tests).
 
 ## Native app
 
@@ -198,6 +200,22 @@ switch is sent before the next key. The remote cursor shape replaces the local
 pointer while capturing. ⇧⎋ releases capture; reserved macOS shortcuts stay
 local. No Accessibility or Input Monitoring permission is used. The
 `remote-input` gate runs the input suites of the app tests.
+
+Displays and reconnection ([task 10 record](10-implement-displays-and-reconnection/implementation-record.md)):
+a virtual display (`--headless`) or a mirrored output (`--output NAME`, empty for
+the focused one) is chosen in the form and kept with the recent host. The remote
+surface reports its size in backing pixels and scale; once it holds for 200 ms the
+controller sends `Resize`, which resizes a virtual display at that scale or scales a
+mirrored stream to fit. A session that loses its link after streaming is replaced
+automatically after 1, 2, 4, 8 and 16 seconds (a new SSH process, handshake,
+decoder and input state each time); setup refusals (`GliffError.Setup`: host key,
+key authentication, missing server), incompatible servers, first attempts and the
+user's disconnect are not retried. Sleep ends the session and wake starts a new
+one; a network path coming back cuts the wait short. Once streaming, the driver
+pings a server silent for 5 seconds and fails the session after 15 seconds of
+silence. `scripts/live-displays-check.sh HOST USER IDENTITY` runs the live resize,
+mirror, kill, stall, network-drop and connect/cancel checks with
+`examples/display_probe` and checks the host and the Mac for leftovers.
 
 `SessionController` (one per window, main actor) owns the connection form and
 phases, and ignores callbacks from sessions it replaced. `SessionRegistry` owns

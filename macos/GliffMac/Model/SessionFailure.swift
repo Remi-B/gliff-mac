@@ -14,13 +14,17 @@ struct SessionFailure: Equatable, Sendable {
     /// The server or protocol cannot work with this client: retrying the
     /// same settings would fail the same way.
     let isFatal: Bool
+    /// A lost or unreachable link: a reconnecting session tries again by
+    /// itself. Setup refusals and protocol failures wait for the user.
+    let isLinkFailure: Bool
 
     var recoveries: [Recovery] { isFatal ? [.editConnection] : [.retry, .editConnection] }
 
-    init(title: String, message: String, isFatal: Bool = false) {
+    init(title: String, message: String, isFatal: Bool = false, isLinkFailure: Bool = false) {
         self.title = title
         self.message = message
         self.isFatal = isFatal
+        self.isLinkFailure = isLinkFailure
     }
 
     /// Maps the bridge's typed errors. Transport messages are already fixed,
@@ -32,6 +36,8 @@ struct SessionFailure: Equatable, Sendable {
         case .InvalidOptions(let message):
             self.init(title: "Check the connection settings", message: Self.sentence(message), isFatal: true)
         case .Transport(let message):
+            self.init(title: "Could not connect", message: Self.sentence(message), isLinkFailure: true)
+        case .Setup(let message):
             self.init(title: "Could not connect", message: Self.sentence(message))
         case .VersionMismatch(let client, let server, let reason):
             self.init(

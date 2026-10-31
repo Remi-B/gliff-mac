@@ -8,27 +8,55 @@ import Testing
         let request = ConnectionRequest(host: " desk ", user: " ", port: "", identityFile: "", serverPath: "")
         #expect(request.validationErrors().isEmpty)
         #expect(request.target() == .ssh(host: "desk", user: nil, port: nil, serverPath: nil,
-                                         identityFile: nil, headless: true, videoMode: .auto))
+                                         identityFile: nil, headless: true, output: nil, videoMode: .auto))
         #expect(request.displayName == "desk")
     }
 
     @Test func everyFieldIsPassedStructured() {
         let request = ConnectionRequest(host: "10.0.0.2", user: "remi", port: "2222",
                                         identityFile: "/Users/remi/.ssh/id_ed25519",
-                                        serverPath: "/opt/gliff/bin/gliff-server", headless: false,
+                                        serverPath: "/opt/gliff/bin/gliff-server", headless: false, output: " DP-1 ",
                                         videoMode: .gpu)
         #expect(request.validationErrors().isEmpty)
         #expect(request.target() == .ssh(host: "10.0.0.2", user: "remi", port: 2222,
                                          serverPath: "/opt/gliff/bin/gliff-server",
-                                         identityFile: "/Users/remi/.ssh/id_ed25519", headless: false,
+                                         identityFile: "/Users/remi/.ssh/id_ed25519", headless: false, output: "DP-1",
                                          videoMode: .gpu))
         #expect(request.displayName == "remi@10.0.0.2:2222")
+        #expect(request.displayModeDescription == "Mirror DP-1")
+    }
+
+    /// A mirror output is only sent in mirror mode, and validated like the bridge.
+    @Test func mirrorOutputIsOptionalAndOnlyForMirrorMode() {
+        let headless = ConnectionRequest(host: "desk", headless: true, output: "DP-1")
+        #expect(headless.validationErrors().isEmpty)
+        #expect(headless.normalized.output == "")
+        guard case let .ssh(_, _, _, _, _, _, output, _) = headless.target() else { Issue.record("not SSH"); return }
+        #expect(output == nil)
+        #expect(headless.displayModeDescription == "Virtual display")
+        #expect(ConnectionRequest(host: "desk", headless: false).displayModeDescription == "Mirror focused output")
+        for name in ["DP 1", "-x", "a;b", "é", String(repeating: "a", count: 65)] {
+            let request = ConnectionRequest(host: "desk", headless: false, output: name)
+            #expect(Array(request.validationErrors().keys) == [.output], "\(name)")
+            let bridgeAccepts = (try? GliffSession(target: request.target(), options: SessionOptions(chroma: [.single420]))) != nil
+            #expect(!bridgeAccepts, "\(name)")
+        }
+    }
+
+    /// Entries saved before task 10 have no output: they mirror the focused one.
+    @Test func olderEntriesDecodeWithoutAnOutput() throws {
+        let json = #"{"host":"desk","user":"","port":"","identityFile":"","serverPath":"","headless":false}"#
+        let request = try JSONDecoder().decode(ConnectionRequest.self, from: Data(json.utf8))
+        #expect(request.output == "")
+        #expect(request.videoMode == .auto)
+        let saved = ConnectionRequest(host: "desk", headless: false, output: "HDMI-A-1")
+        #expect(try JSONDecoder().decode(ConnectionRequest.self, from: JSONEncoder().encode(saved)) == saved)
     }
 
     @Test(arguments: ServerVideoMode.allCases)
     func selectedEncoderModeReachesBridge(mode: ServerVideoMode) {
         let target = ConnectionRequest(host: "desk", videoMode: mode).target()
-        guard case let .ssh(_, _, _, _, _, _, videoMode) = target else {
+        guard case let .ssh(_, _, _, _, _, _, _, videoMode) = target else {
             Issue.record("connection request did not produce an SSH target")
             return
         }
@@ -61,7 +89,7 @@ import Testing
     func formValidationMatchesTheBridge(host: String) {
         let request = ConnectionRequest(host: host)
         let bridgeAccepts = (try? GliffSession(target: .ssh(host: host, user: nil, port: nil, serverPath: nil,
-                                                            identityFile: nil, headless: true, videoMode: .auto),
+                                                            identityFile: nil, headless: true, output: nil, videoMode: .auto),
                                                options: SessionOptions(chroma: [.single420]))) != nil
         #expect(request.validationErrors().isEmpty == bridgeAccepts)
     }
@@ -119,7 +147,9 @@ import Testing
         recents.remember(ConnectionRequest(host: "a", user: "u", port: "22", identityFile: "/k", serverPath: "s"))
         let data = try #require(defaults.store.data(forKey: RecentConnections.entriesKey))
         let stored = try #require(try JSONSerialization.jsonObject(with: data) as? [[String: Any]])
-        #expect(Set(stored[0].keys) == ["host", "user", "port", "identityFile", "serverPath", "headless", "videoMode"])
+        #expect(Set(stored[0].keys) == [
+            "host", "user", "port", "identityFile", "serverPath", "headless", "output", "videoMode",
+        ])
     }
 
     @Test func oldRecentEntriesDefaultToAutoAndModePersists() throws {

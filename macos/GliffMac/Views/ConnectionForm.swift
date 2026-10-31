@@ -31,7 +31,11 @@ struct ConnectionForm: View {
                 Section("Server") {
                     field(.serverPath, "Server", text: $controller.request.serverPath, prompt: "gliff-server")
                     Toggle("Use a virtual display", isOn: $controller.request.headless)
-                        .help("Off mirrors the server's current output instead")
+                        .help("A display sized to this window. Off mirrors an existing output instead.")
+                    if !controller.request.headless {
+                        field(.output, "Output to mirror", text: $controller.request.output, prompt: "focused output")
+                            .help("An output name such as DP-1 or eDP-1 (hyprctl monitors); empty mirrors the focused one")
+                    }
                     Picker("Video encoder", selection: $controller.request.videoMode) {
                         ForEach(ServerVideoMode.allCases) { mode in
                             Text(mode.label).tag(mode)
@@ -144,6 +148,9 @@ struct RecentConnectionsList: View {
                     } label: {
                         VStack(alignment: .leading) {
                             Text(entry.displayName)
+                            Text(entry.displayModeDescription)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                             if !entry.identityFile.isEmpty {
                                 Text((entry.identityFile as NSString).lastPathComponent)
                                     .font(.caption)

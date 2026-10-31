@@ -1,0 +1,861 @@
+{
+ "date": "2026-10-31",
+ "host": "Omarchy (Arch Linux) x86_64, Hyprland 0.56, Intel UHD 630",
+ "client": "macOS 27.0.1 arm64",
+ "server": "unmodified gliff-server 58c742452ded3f10a2ce61f60eb4845f18205e29 (v0.4.1), --video auto",
+ "probe": "crates/gliff-mac-core/examples/display_probe via scripts/live-displays-check.sh",
+ "note": "Times exclude SSH connection setup. 'detected_after_ms' is from the host-side action to the session end. The kill/stall/blackhole leftover counts of the second run include the output orphaned by the SIGKILLed server of that run (an upstream limitation); the first run, on a clean host, had none for stall and blackhole.",
+ "resize": {
+  "scenario": "resize",
+  "steps": [
+   {
+    "request": [
+     1600,
+     1000,
+     2
+    ],
+    "matched": true,
+    "ms": 129
+   },
+   {
+    "request": [
+     1280,
+     800,
+     1
+    ],
+    "matched": true,
+    "ms": 81
+   },
+   {
+    "request": [
+     2560,
+     1440,
+     2
+    ],
+    "matched": true,
+    "ms": 102
+   },
+   {
+    "request": [
+     2560,
+     1440,
+     1
+    ],
+    "matched": true,
+    "ms": 77
+   },
+   {
+    "request": [
+     1024,
+     768,
+     2
+    ],
+    "matched": true,
+    "ms": 65
+   }
+  ],
+  "session": {
+   "hello": {
+    "headless": true,
+    "output_is_requested": false,
+    "outputs": 1
+   },
+   "configs": [
+    {
+     "ms": 10535,
+     "generation": 1,
+     "rebuild": true,
+     "width": 1920,
+     "height": 1080,
+     "view": [
+      1920,
+      1080
+     ],
+     "scale_milli": 1000,
+     "fps": 30,
+     "chroma": "Dual420"
+    },
+    {
+     "ms": 10664,
+     "generation": 2,
+     "rebuild": true,
+     "width": 1600,
+     "height": 1000,
+     "view": [
+      1600,
+      1000
+     ],
+     "scale_milli": 2000,
+     "fps": 30,
+     "chroma": "Dual420"
+    },
+    {
+     "ms": 10745,
+     "generation": 3,
+     "rebuild": true,
+     "width": 1280,
+     "height": 800,
+     "view": [
+      1280,
+      800
+     ],
+     "scale_milli": 1000,
+     "fps": 30,
+     "chroma": "Dual420"
+    },
+    {
+     "ms": 10847,
+     "generation": 4,
+     "rebuild": true,
+     "width": 2560,
+     "height": 1440,
+     "view": [
+      2560,
+      1440
+     ],
+     "scale_milli": 2000,
+     "fps": 30,
+     "chroma": "Dual420"
+    },
+    {
+     "ms": 10924,
+     "generation": 4,
+     "rebuild": false,
+     "width": 2560,
+     "height": 1440,
+     "view": [
+      2560,
+      1440
+     ],
+     "scale_milli": 1000,
+     "fps": 30,
+     "chroma": "Dual420"
+    },
+    {
+     "ms": 10989,
+     "generation": 5,
+     "rebuild": true,
+     "width": 1024,
+     "height": 768,
+     "view": [
+      1024,
+      768
+     ],
+     "scale_milli": 2000,
+     "fps": 30,
+     "chroma": "Dual420"
+    }
+   ],
+   "end": {
+    "kind": "cancelled",
+    "ms": 11002
+   },
+   "stats": {
+    "frames": 4,
+    "acks": 4,
+    "pings": 0,
+    "inputs": 5,
+    "peak_in_flight": 1,
+    "decode_delay_max_us": 434
+   }
+  },
+  "leftovers": {
+   "gliff_outputs": 0,
+   "servers": 0,
+   "local_ssh": 0
+  }
+ },
+ "mirror": {
+  "scenario": "mirror",
+  "steps": [
+   {
+    "first": [
+     1920,
+     1080
+    ],
+    "request": [
+     960,
+     540
+    ],
+    "fitted": true,
+    "ms": 32
+   }
+  ],
+  "session": {
+   "hello": {
+    "headless": false,
+    "output_is_requested": true,
+    "outputs": 1
+   },
+   "configs": [
+    {
+     "ms": 10461,
+     "generation": 1,
+     "rebuild": true,
+     "width": 1920,
+     "height": 1080,
+     "view": [
+      1920,
+      1080
+     ],
+     "scale_milli": 2000,
+     "fps": 30,
+     "chroma": "Dual420"
+    },
+    {
+     "ms": 10493,
+     "generation": 2,
+     "rebuild": true,
+     "width": 960,
+     "height": 540,
+     "view": [
+      960,
+      540
+     ],
+     "scale_milli": 1000,
+     "fps": 30,
+     "chroma": "Dual420"
+    }
+   ],
+   "end": {
+    "kind": "cancelled",
+    "ms": 10507
+   },
+   "stats": {
+    "frames": 0,
+    "acks": 0,
+    "pings": 0,
+    "inputs": 1,
+    "peak_in_flight": 0,
+    "decode_delay_max_us": 0
+   }
+  },
+  "leftovers": {
+   "gliff_outputs": 0,
+   "servers": 0,
+   "local_ssh": 0
+  }
+ },
+ "cycles": {
+  "scenario": "cycles",
+  "cycles": [
+   {
+    "streamed": true,
+    "teardown_ms": 13,
+    "session": {
+     "hello": {
+      "headless": true,
+      "output_is_requested": false,
+      "outputs": 1
+     },
+     "configs": [
+      {
+       "ms": 10541,
+       "generation": 1,
+       "rebuild": true,
+       "width": 1920,
+       "height": 1080,
+       "view": [
+        1920,
+        1080
+       ],
+       "scale_milli": 1000,
+       "fps": 30,
+       "chroma": "Dual420"
+      }
+     ],
+     "end": {
+      "kind": "cancelled",
+      "ms": 10555
+     },
+     "stats": {
+      "frames": 0,
+      "acks": 0,
+      "pings": 0,
+      "inputs": 0,
+      "peak_in_flight": 0,
+      "decode_delay_max_us": 0
+     }
+    }
+   },
+   {
+    "streamed": true,
+    "teardown_ms": 13,
+    "session": {
+     "hello": {
+      "headless": true,
+      "output_is_requested": false,
+      "outputs": 1
+     },
+     "configs": [
+      {
+       "ms": 10536,
+       "generation": 1,
+       "rebuild": true,
+       "width": 1920,
+       "height": 1080,
+       "view": [
+        1920,
+        1080
+       ],
+       "scale_milli": 1000,
+       "fps": 30,
+       "chroma": "Dual420"
+      }
+     ],
+     "end": {
+      "kind": "cancelled",
+      "ms": 10550
+     },
+     "stats": {
+      "frames": 0,
+      "acks": 0,
+      "pings": 0,
+      "inputs": 0,
+      "peak_in_flight": 0,
+      "decode_delay_max_us": 0
+     }
+    }
+   },
+   {
+    "streamed": true,
+    "teardown_ms": 13,
+    "session": {
+     "hello": {
+      "headless": true,
+      "output_is_requested": false,
+      "outputs": 1
+     },
+     "configs": [
+      {
+       "ms": 10550,
+       "generation": 1,
+       "rebuild": true,
+       "width": 1920,
+       "height": 1080,
+       "view": [
+        1920,
+        1080
+       ],
+       "scale_milli": 1000,
+       "fps": 30,
+       "chroma": "Dual420"
+      }
+     ],
+     "end": {
+      "kind": "cancelled",
+      "ms": 10564
+     },
+     "stats": {
+      "frames": 0,
+      "acks": 0,
+      "pings": 0,
+      "inputs": 0,
+      "peak_in_flight": 0,
+      "decode_delay_max_us": 0
+     }
+    }
+   },
+   {
+    "streamed": true,
+    "teardown_ms": 12,
+    "session": {
+     "hello": {
+      "headless": true,
+      "output_is_requested": false,
+      "outputs": 1
+     },
+     "configs": [
+      {
+       "ms": 10526,
+       "generation": 1,
+       "rebuild": true,
+       "width": 1920,
+       "height": 1080,
+       "view": [
+        1920,
+        1080
+       ],
+       "scale_milli": 1000,
+       "fps": 30,
+       "chroma": "Dual420"
+      }
+     ],
+     "end": {
+      "kind": "cancelled",
+      "ms": 10538
+     },
+     "stats": {
+      "frames": 0,
+      "acks": 0,
+      "pings": 0,
+      "inputs": 0,
+      "peak_in_flight": 0,
+      "decode_delay_max_us": 0
+     }
+    }
+   },
+   {
+    "streamed": true,
+    "teardown_ms": 12,
+    "session": {
+     "hello": {
+      "headless": true,
+      "output_is_requested": false,
+      "outputs": 1
+     },
+     "configs": [
+      {
+       "ms": 10552,
+       "generation": 1,
+       "rebuild": true,
+       "width": 1920,
+       "height": 1080,
+       "view": [
+        1920,
+        1080
+       ],
+       "scale_milli": 1000,
+       "fps": 30,
+       "chroma": "Dual420"
+      }
+     ],
+     "end": {
+      "kind": "cancelled",
+      "ms": 10564
+     },
+     "stats": {
+      "frames": 0,
+      "acks": 0,
+      "pings": 0,
+      "inputs": 0,
+      "peak_in_flight": 0,
+      "decode_delay_max_us": 0
+     }
+    }
+   },
+   {
+    "streamed": true,
+    "teardown_ms": 12,
+    "session": {
+     "hello": {
+      "headless": true,
+      "output_is_requested": false,
+      "outputs": 1
+     },
+     "configs": [
+      {
+       "ms": 10528,
+       "generation": 1,
+       "rebuild": true,
+       "width": 1920,
+       "height": 1080,
+       "view": [
+        1920,
+        1080
+       ],
+       "scale_milli": 1000,
+       "fps": 30,
+       "chroma": "Dual420"
+      }
+     ],
+     "end": {
+      "kind": "cancelled",
+      "ms": 10541
+     },
+     "stats": {
+      "frames": 0,
+      "acks": 0,
+      "pings": 0,
+      "inputs": 0,
+      "peak_in_flight": 0,
+      "decode_delay_max_us": 0
+     }
+    }
+   },
+   {
+    "streamed": true,
+    "teardown_ms": 11,
+    "session": {
+     "hello": {
+      "headless": true,
+      "output_is_requested": false,
+      "outputs": 1
+     },
+     "configs": [
+      {
+       "ms": 10553,
+       "generation": 1,
+       "rebuild": true,
+       "width": 1920,
+       "height": 1080,
+       "view": [
+        1920,
+        1080
+       ],
+       "scale_milli": 1000,
+       "fps": 30,
+       "chroma": "Dual420"
+      }
+     ],
+     "end": {
+      "kind": "cancelled",
+      "ms": 10564
+     },
+     "stats": {
+      "frames": 0,
+      "acks": 0,
+      "pings": 0,
+      "inputs": 0,
+      "peak_in_flight": 0,
+      "decode_delay_max_us": 0
+     }
+    }
+   },
+   {
+    "streamed": true,
+    "teardown_ms": 14,
+    "session": {
+     "hello": {
+      "headless": true,
+      "output_is_requested": false,
+      "outputs": 1
+     },
+     "configs": [
+      {
+       "ms": 10551,
+       "generation": 1,
+       "rebuild": true,
+       "width": 1920,
+       "height": 1080,
+       "view": [
+        1920,
+        1080
+       ],
+       "scale_milli": 1000,
+       "fps": 30,
+       "chroma": "Dual420"
+      }
+     ],
+     "end": {
+      "kind": "cancelled",
+      "ms": 10565
+     },
+     "stats": {
+      "frames": 0,
+      "acks": 0,
+      "pings": 0,
+      "inputs": 0,
+      "peak_in_flight": 0,
+      "decode_delay_max_us": 0
+     }
+    }
+   },
+   {
+    "streamed": true,
+    "teardown_ms": 14,
+    "session": {
+     "hello": {
+      "headless": true,
+      "output_is_requested": false,
+      "outputs": 1
+     },
+     "configs": [
+      {
+       "ms": 10545,
+       "generation": 1,
+       "rebuild": true,
+       "width": 1920,
+       "height": 1080,
+       "view": [
+        1920,
+        1080
+       ],
+       "scale_milli": 1000,
+       "fps": 30,
+       "chroma": "Dual420"
+      }
+     ],
+     "end": {
+      "kind": "cancelled",
+      "ms": 10560
+     },
+     "stats": {
+      "frames": 0,
+      "acks": 0,
+      "pings": 0,
+      "inputs": 1,
+      "peak_in_flight": 0,
+      "decode_delay_max_us": 0
+     }
+    }
+   },
+   {
+    "streamed": true,
+    "teardown_ms": 13,
+    "session": {
+     "hello": {
+      "headless": true,
+      "output_is_requested": false,
+      "outputs": 1
+     },
+     "configs": [
+      {
+       "ms": 10550,
+       "generation": 1,
+       "rebuild": true,
+       "width": 1920,
+       "height": 1080,
+       "view": [
+        1920,
+        1080
+       ],
+       "scale_milli": 1000,
+       "fps": 30,
+       "chroma": "Dual420"
+      }
+     ],
+     "end": {
+      "kind": "cancelled",
+      "ms": 10564
+     },
+     "stats": {
+      "frames": 0,
+      "acks": 0,
+      "pings": 0,
+      "inputs": 0,
+      "peak_in_flight": 0,
+      "decode_delay_max_us": 0
+     }
+    }
+   }
+  ],
+  "leftovers": {
+   "gliff_outputs": 0,
+   "servers": 0,
+   "local_ssh": 0
+  }
+ },
+ "kill": {
+  "scenario": "kill",
+  "streaming_ms": 10554,
+  "session": {
+   "hello": {
+    "headless": true,
+    "output_is_requested": false,
+    "outputs": 1
+   },
+   "configs": [
+    {
+     "ms": 10554,
+     "generation": 1,
+     "rebuild": true,
+     "width": 1920,
+     "height": 1080,
+     "view": [
+      1920,
+      1080
+     ],
+     "scale_milli": 1000,
+     "fps": 30,
+     "chroma": "Dual420"
+    },
+    {
+     "ms": 10728,
+     "generation": 1,
+     "rebuild": false,
+     "width": 1920,
+     "height": 1080,
+     "view": [
+      1920,
+      1080
+     ],
+     "scale_milli": 1000,
+     "fps": 60,
+     "chroma": "Dual420"
+    }
+   ],
+   "end": {
+    "kind": "failed",
+    "class": "transport",
+    "message": "SSH session ended unexpectedly. Check the network and server diagnostics.",
+    "ms": 11363
+   },
+   "stats": {
+    "frames": 38,
+    "acks": 38,
+    "pings": 0,
+    "inputs": 0,
+    "peak_in_flight": 2,
+    "decode_delay_max_us": 96
+   }
+  },
+  "detected_after_ms": 731,
+  "leftovers": {
+   "gliff_outputs": 1,
+   "servers": 0,
+   "local_ssh": 0
+  }
+ },
+ "stall": {
+  "scenario": "stall",
+  "streaming_ms": 10531,
+  "session": {
+   "hello": {
+    "headless": true,
+    "output_is_requested": false,
+    "outputs": 1
+   },
+   "configs": [
+    {
+     "ms": 10531,
+     "generation": 1,
+     "rebuild": true,
+     "width": 1920,
+     "height": 1080,
+     "view": [
+      1920,
+      1080
+     ],
+     "scale_milli": 1000,
+     "fps": 30,
+     "chroma": "Dual420"
+    },
+    {
+     "ms": 10735,
+     "generation": 1,
+     "rebuild": false,
+     "width": 1920,
+     "height": 1080,
+     "view": [
+      1920,
+      1080
+     ],
+     "scale_milli": 1000,
+     "fps": 60,
+     "chroma": "Dual420"
+    }
+   ],
+   "end": {
+    "kind": "failed",
+    "class": "transport",
+    "message": "io: the server stopped responding for 15 seconds",
+    "ms": 26553
+   },
+   "stats": {
+    "frames": 45,
+    "acks": 45,
+    "pings": 3,
+    "inputs": 0,
+    "peak_in_flight": 2,
+    "decode_delay_max_us": 470
+   }
+  },
+  "detected_after_ms": 15706,
+  "leftovers": {
+   "gliff_outputs": 1,
+   "servers": 0,
+   "local_ssh": 0
+  }
+ },
+ "blackhole": {
+  "scenario": "blackhole",
+  "streaming_ms": 10538,
+  "session": {
+   "hello": {
+    "headless": true,
+    "output_is_requested": false,
+    "outputs": 1
+   },
+   "configs": [
+    {
+     "ms": 10538,
+     "generation": 1,
+     "rebuild": true,
+     "width": 1920,
+     "height": 1080,
+     "view": [
+      1920,
+      1080
+     ],
+     "scale_milli": 1000,
+     "fps": 30,
+     "chroma": "Dual420"
+    },
+    {
+     "ms": 11135,
+     "generation": 1,
+     "rebuild": false,
+     "width": 1920,
+     "height": 1080,
+     "view": [
+      1920,
+      1080
+     ],
+     "scale_milli": 1000,
+     "fps": 60,
+     "chroma": "Dual420"
+    }
+   ],
+   "end": {
+    "kind": "failed",
+    "class": "transport",
+    "message": "io: the server stopped responding for 15 seconds",
+    "ms": 26549
+   },
+   "stats": {
+    "frames": 33,
+    "acks": 33,
+    "pings": 3,
+    "inputs": 0,
+    "peak_in_flight": 1,
+    "decode_delay_max_us": 262
+   }
+  },
+  "detected_after_ms": 15715,
+  "leftovers": {
+   "gliff_outputs": 1,
+   "servers": 0,
+   "local_ssh": 0
+  }
+ },
+ "stall_clean_host_run": {
+  "end": {
+   "kind": "failed",
+   "class": "transport",
+   "message": "io: the server stopped responding for 15 seconds",
+   "ms": 34141
+  },
+  "leftovers": {
+   "gliff_outputs": 0,
+   "servers": 0,
+   "local_ssh": 0
+  }
+ },
+ "blackhole_clean_host_run": {
+  "end": {
+   "kind": "failed",
+   "class": "transport",
+   "message": "io: the server stopped responding for 15 seconds",
+   "ms": 34035
+  },
+  "leftovers": {
+   "gliff_outputs": 0,
+   "servers": 0,
+   "local_ssh": 0
+  }
+ },
+ "gui_app": {
+  "build": "Debug GliffMac.app from this branch, launched with GliffDebugAutoConnect (headless)",
+  "initial_output": "virtual display 2418x1520 at scale 2 = window surface (1209 pt wide) in backing pixels",
+  "server_kill": "app started a new session by itself (new ssh child and server); new output 2418x1520 at scale 2",
+  "server_stall": [
+   "02:09:06 SIGSTOP",
+   "02:09:17 reconnecting(waiting) attempt 1/5",
+   "02:09:18 reconnecting(starting) session-3",
+   "02:09:30 streaming(1920x1080)",
+   "02:09:30.9 streaming(2418x1520) after the settled Resize"
+  ],
+  "quit": "session output and server removed, no local ssh; the stalled server removed its output once resumed; only the SIGKILLed server's output remained and was removed by hand"
+ }
+}

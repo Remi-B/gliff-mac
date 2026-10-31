@@ -20,7 +20,10 @@ struct RemoteSurfaceView: View {
                     cursorPosition: controller.remoteCursorPosition,
                     cursorOutputScale: controller.cursorOutputScale,
                     onCapture: { if captureInput { controller.captureInput() } },
-                    onRelease: { controller.releaseInput() }
+                    onRelease: { controller.releaseInput() },
+                    onSurfaceChange: { size, scale in
+                        controller.surfaceChanged(pixelWidth: size.width, pixelHeight: size.height, scale: scale)
+                    }
                 )
                 .overlay { overlay(video) }
                 .accessibilityElement()
@@ -78,6 +81,10 @@ struct RemoteSurfaceView: View {
                     Label("Software decoding", systemImage: "cpu")
                         .help("VideoToolbox did not provide a hardware decoder for this stream.")
                 }
+            }
+            if controller.reconnectCount > 0 {
+                Label("Reconnected \(controller.reconnectCount)×", systemImage: "arrow.triangle.2.circlepath")
+                    .help("The connection was lost and restored automatically in this window.")
             }
             if let message = controller.serverMessage {
                 Label(message, systemImage: "exclamationmark.bubble")
@@ -145,6 +152,9 @@ struct RemoteSurface: NSViewRepresentable {
     var cursorOutputScale: CGFloat = 1
     var onCapture: @MainActor () -> Void
     var onRelease: @MainActor () -> Void
+    /// The surface's size in backing pixels and its backing scale, on every
+    /// change: window resizing, full screen, a move to another display.
+    var onSurfaceChange: @MainActor (CGSize, CGFloat) -> Void = { _, _ in }
 
     func makeNSView(context: Context) -> SurfaceView {
         let view = SurfaceView()
@@ -164,6 +174,7 @@ struct RemoteSurface: NSViewRepresentable {
     private func update(_ view: SurfaceView) {
         view.onCapture = onCapture
         view.onRelease = onRelease
+        view.onSurfaceChange = onSurfaceChange
         view.input = input
         view.remoteCursor = cursor
         view.cursorPosition = cursorPosition
@@ -176,6 +187,7 @@ struct RemoteSurface: NSViewRepresentable {
         var onCapture: (@MainActor () -> Void)?
         /// Ends capture: release shortcut, focus loss, window closing.
         var onRelease: (@MainActor () -> Void)?
+        var onSurfaceChange: (@MainActor (CGSize, CGFloat) -> Void)?
         /// Set while capturing; keys, buttons, motion and scrolling go there.
         var input: InputForwarder?
         var isCapturing = false {
@@ -283,9 +295,11 @@ struct RemoteSurface: NSViewRepresentable {
             videoLayer.frame = bounds
             border.frame = bounds
             videoLayer.contentsScale = scale
-            videoLayer.drawableSize = CGSize(
+            let pixels = CGSize(
                 width: (bounds.width * scale).rounded(), height: (bounds.height * scale).rounded())
+            videoLayer.drawableSize = pixels
             CATransaction.commit()
+            if window != nil { onSurfaceChange?(pixels, scale) }
             render()
             // The remote cursor's size follows the picture's scale.
             if isCapturing { window?.invalidateCursorRects(for: self) }

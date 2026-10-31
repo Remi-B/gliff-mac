@@ -1,7 +1,7 @@
 # Gliff macOS implementation plan
 
-Status: tasks 01–08 merged; task 09 in review; tasks 10–13 planned.
-Updated on 2026-10-30.
+Status: tasks 01–09 merged; task 10 in review; tasks 11–13 planned.
+Updated on 2026-10-31.
 
 Planning location: this specification/plan/task collection is versioned under
 `docs/`, alongside the application build/development documentation.
@@ -99,8 +99,8 @@ as the initial baseline, then validate each subsequent pin explicitly.
 ## Ordered tasks
 
 Each task has scope, dependencies, deliverables, and acceptance criteria in its
-folder. Tasks 01–08 are **merged**, with CPU Dual420 acceptance still blocked;
-task 09 is **in review** and tasks 10–13 are **planned**. The order prioritizes repository ownership,
+folder. Tasks 01–09 are **merged**, with CPU Dual420 acceptance still blocked;
+task 10 is **in review** and tasks 11–13 are **planned**. The order prioritizes repository ownership,
 compatibility, and build risks before UI breadth.
 
 | # | Task | Depends on | Completion evidence |
@@ -113,8 +113,8 @@ compatibility, and build risks before UI breadth.
 | 06 | [create-native-macos-app](06-create-native-macos-app/README.md) | 04 | Native app shell; typed session UI; deterministic Xcode build — **merged**: view model, live Finder-launched SSH session, app tests gate |
 | 07 | [decode-and-display-h264](07-decode-and-display-h264/README.md) | 05, 06 | Real VideoToolbox Single420 decode/presentation, Finder-to-server validation and feedback from native callbacks — **merged**: fixture decode bit-exact with upstream, Metal presentation, live Finder session acked from native completion |
 | 08 | [render-full-chroma-metal](08-render-full-chroma-metal/README.md) | 07 | Dual420 pair decoding and reference-verified full-chroma rendering — **CPU acceptance blocked**: 75 native tests pass, GPU native SSH/resize verified; pinned CPU server's auxiliary keyframe fails the existing contract |
-| 09 | [implement-remote-input](09-implement-remote-input/README.md) | 07 | Focused pointer/keyboard control; escape; explicit keyboard-layout support — **in review**: input, Apple-derived U.S./French maps and remote cursor implemented; native headless text/dead-key smoke passed; interactive/hardware acceptance pending |
-| 10 | [implement-displays-and-reconnection](10-implement-displays-and-reconnection/README.md) | 08, 09 | Mirror/headless modes, resize, reconnect and session cleanup |
+| 09 | [implement-remote-input](09-implement-remote-input/README.md) | 07 | Focused pointer/keyboard control; escape; explicit keyboard-layout support — **merged** (#10): input, Apple-derived U.S./French maps and remote cursor implemented; native headless text/dead-key smoke passed; interactive/hardware acceptance pending |
+| 10 | [implement-displays-and-reconnection](10-implement-displays-and-reconnection/README.md) | 08, 09 | Mirror/headless modes, resize, reconnect and session cleanup — **in review**: output selection, settled resize, liveness, bounded automatic reconnect, sleep/wake; live resize/mirror/kill/stall/drop/cycle checks passed; GUI and sleep acceptance pending |
 | 11 | [implement-shared-clipboard](11-implement-shared-clipboard/README.md) | 05, 06, 10 | On-demand text/image/file clipboard, cancellation and session isolation |
 | 12 | [validate-performance-and-end-to-end](12-validate-performance-and-end-to-end/README.md) | 03, 08, 09, 10, 11 | Cross-platform acceptance, measured latency/memory/quality, and [real SSH multi-hop implementation/validation](12-validate-performance-and-end-to-end/ssh-multi-hop.md) |
 | 13 | [package-and-release-macos](13-package-and-release-macos/README.md) | 12 | Tested universal app, signing/notarization workflow and release provenance |

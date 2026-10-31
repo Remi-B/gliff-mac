@@ -51,6 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             identity_file: Some(args[3].clone()),
             server_path: Some(args[4].clone()),
             headless: true,
+            output: None,
             video_mode: VideoMode::Auto,
         },
         SessionOptions {

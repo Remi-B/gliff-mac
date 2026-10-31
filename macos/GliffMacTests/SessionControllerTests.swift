@@ -68,7 +68,8 @@ import Testing
 
     @Test func invalidFieldsNeverStartASession() {
         controller.request = ConnectionRequest(host: "-oProxyCommand=x", user: "a b", port: "0",
-                                               identityFile: "id_ed25519", serverPath: "~/gliff-server")
+                                               identityFile: "id_ed25519", serverPath: "~/gliff-server",
+                                               headless: false, output: "DP 1")
         controller.connect()
         #expect(factory.requests.isEmpty)
         #expect(controller.phase == .idle)
@@ -112,8 +113,10 @@ import Testing
         controller.connect()
         factory.last.emit(.connected(.sample))
         factory.last.emit(.ended(.failed(error: .Transport(message: "host key verification failed"))))
+        // A first attempt's failure goes to the user, not to automatic retries.
         #expect(controller.phase == .failed(
-            SessionFailure(title: "Could not connect", message: "Host key verification failed.")))
+            SessionFailure(title: "Could not connect", message: "Host key verification failed.", isLinkFailure: true)))
+        #expect(factory.sessions.count == 1 && controller.reconnection == nil)
         #expect(registry.activeCount == 0)
         #expect(controller.canReconnect && controller.canConnect)
 
@@ -143,7 +146,18 @@ import Testing
         #expect(controller.serverMessage == "encoder restarted (code 256)")
         #expect(controller.isStreaming)
         factory.last.emit(.ended(.closed))
+        // A session that streamed is retried automatically (ReconnectionTests).
+        #expect(controller.phase == .reconnecting(.waiting))
+        controller.disconnect()
+        #expect(controller.canReconnect)
+
+        // A server that closes before streaming is shown, not retried.
+        controller.reconnect()
+        factory.last.emit(.connected(.sample))
+        factory.last.emit(.serverError(code: 300, message: "no output"))
+        factory.last.emit(.ended(.closed))
         #expect(controller.phase == .stopped(.serverClosed))
+        #expect(controller.serverMessage == "no output (code 300)")
         #expect(controller.canReconnect)
     }
 

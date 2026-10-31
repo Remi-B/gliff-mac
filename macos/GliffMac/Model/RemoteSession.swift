@@ -107,6 +107,6 @@ final class LiveSession: RemoteSession {
         let s = stats
         let v = decoder.display.diagnostics
         Logger(subsystem: "com.remi-b.gliff-mac", category: "video").info(
-            "session video: delivered \(s.framesDelivered) dropped \(s.framesDropped) acks \(s.acksSent) keyframe requests \(s.keyframeRequests); decoded \(v.decoded) pairs \(v.pairsDecoded) failed \(v.failed) half failures \(v.halfFailures) expired \(v.expired) discarded \(v.discarded) presented \(v.presented) replaced \(v.droppedBeforeDisplay) out of order \(v.outOfOrder) decoders \(v.decoderSessions) hardware \(v.hardwareAccelerated.map { $0 ? "yes" : "no" } ?? "unknown", privacy: .public) max pending \(v.maxPending) completion max \(v.completionMicrosMax) us picture bytes \(v.pictureBytes)")
+            "session video: delivered \(s.framesDelivered) dropped \(s.framesDropped) acks \(s.acksSent) keyframe requests \(s.keyframeRequests) pings \(s.pingsSent) peak in flight \(s.peakInFlightFrames) decode delay max \(s.decodeDelayMaxUs) us; decoded \(v.decoded) pairs \(v.pairsDecoded) failed \(v.failed) half failures \(v.halfFailures) expired \(v.expired) discarded \(v.discarded) presented \(v.presented) replaced \(v.droppedBeforeDisplay) out of order \(v.outOfOrder) decoders \(v.decoderSessions) hardware \(v.hardwareAccelerated.map { $0 ? "yes" : "no" } ?? "unknown", privacy: .public) max pending \(v.maxPending) completion max \(v.completionMicrosMax) us picture bytes \(v.pictureBytes)")
     }
 }
