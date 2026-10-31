@@ -48,7 +48,7 @@ flowchart LR
 | `SessionOptions` | Decoder chroma modes advertised to the server, preferred first (SSH and replay alike since task 08; the app sends `[Dual420, Single420]`), keymap, in-flight budget (default 4 frames, 8 MiB) |
 | `start(delegate:)` | Once; `AlreadyStarted` afterwards. A refused start keeps no delegate |
 | `reportDecode(frameId:outcome:)` | `decoded`, `failed` (requests a keyframe) or `discarded`; `UnknownFrame`, `NotRunning` |
-| `sendInput(event:)` | Key (evdev), pointer, scroll, resize; `Busy` beyond 256 queued, `NotRunning` after the end |
+| `sendInput(event:)` | Key (evdev), pointer, scroll, resize, keymap change (XKB text, sent in queue order before later keys); `Busy` beyond 256 queued, `NotRunning` after the end |
 | `cancel()` | Idempotent, non-blocking; dropping the last reference cancels too |
 | `state()` | Connecting before start, handshaking until first stream configuration, streaming, stopping, closed or failed |
 | `stats()` | Counters: configs, frames delivered/dropped/failed, acks, keyframe requests, pongs, inputs, in-flight peaks |

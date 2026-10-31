@@ -13,6 +13,19 @@ final class FakeSession: RemoteSession {
     /// Set to stand for a session with a decoder.
     var display: VideoDisplay?
     var videoDisplay: VideoDisplay? { display }
+    /// The layout whose keymap the session started with.
+    var layout: KeyboardLayout?
+    var keyboardLayout: KeyboardLayout? { layout }
+    /// Input the session accepted, in order; nothing after `.ended`.
+    private(set) var inputs: [InputEvent] = []
+    private var ended = false
+    var acceptsInput = true
+
+    func send(_ input: InputEvent) -> Bool {
+        guard !ended, acceptsInput else { return false }
+        inputs.append(input)
+        return true
+    }
 
     func start(events: @escaping @MainActor @Sendable (SessionEvent) -> Void) throws {
         startCount += 1
@@ -28,7 +41,10 @@ final class FakeSession: RemoteSession {
     /// Delivers `event` as the bridge relay would; nothing after `.ended`.
     func emit(_ event: SessionEvent) {
         guard let events else { return }
-        if case .ended = event { self.events = nil }
+        if case .ended = event {
+            self.events = nil
+            ended = true
+        }
         events(event)
     }
 

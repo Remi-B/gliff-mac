@@ -68,7 +68,7 @@ impl Default for FrameBudget {
 
 /// Input the native side sends; coordinates are in the remote's logical
 /// space, key codes are Linux evdev codes.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum InputCommand {
     Key {
         keycode: u32,
@@ -92,6 +92,11 @@ pub enum InputCommand {
         width: u32,
         height: u32,
         scale: f32,
+    },
+    /// The local keymap changed since `Hello`: XKB text, as in
+    /// [`SessionConfig::keymap`]. Send it before keys from the new map.
+    Keymap {
+        keymap: String,
     },
 }
 
@@ -125,6 +130,7 @@ impl InputCommand {
                 height,
                 scale,
             },
+            Self::Keymap { keymap } => ClientMsg::Keymap { keymap },
         }
     }
 }

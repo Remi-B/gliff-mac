@@ -16,6 +16,8 @@ struct SessionCommands: Commands {
                 .keyboardShortcut("d", modifiers: [.command, .shift])
                 .disabled(controller?.canDisconnect != true)
             Divider()
+            Button("Capture Input") { controller?.captureInput() }
+                .disabled(controller?.isStreaming != true || controller?.isCapturingInput == true)
             Button("Release Input") { controller?.releaseInput() }
                 .keyboardShortcut(Preferences.releaseShortcut)
                 .disabled(controller?.isCapturingInput != true)

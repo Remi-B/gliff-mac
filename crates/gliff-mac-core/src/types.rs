@@ -172,7 +172,7 @@ pub enum ScrollAxis {
 
 /// Input for the remote. Coordinates are in the remote's logical space;
 /// key codes are Linux evdev codes (task 09 maps macOS keys).
-#[derive(Debug, Clone, Copy, PartialEq, uniffi::Enum)]
+#[derive(Debug, Clone, PartialEq, uniffi::Enum)]
 pub enum InputEvent {
     Key {
         keycode: u32,
@@ -196,6 +196,12 @@ pub enum InputEvent {
         width: u32,
         height: u32,
         scale: f32,
+    },
+    /// The local keymap changed since the session started: XKB text, as in
+    /// `SessionOptions::keymap`. Queued in order, so keys sent after it use
+    /// the new map. Empty text is ignored by the server.
+    Keymap {
+        keymap: String,
     },
 }
 
@@ -489,6 +495,7 @@ impl From<InputEvent> for core::InputCommand {
                 height,
                 scale,
             },
+            InputEvent::Keymap { keymap } => Self::Keymap { keymap },
         }
     }
 }

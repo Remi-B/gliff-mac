@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-30",
+  "client": {
+    "branch": "feat/remote-input",
+    "baseline": "9d33b87103cd47551450096fd638ebfd43d11614",
+    "dirty": true,
+    "path": "temporary Swift probe compiled from production LiveSession, H264Decoder, InputForwarder, KeyCodes, KeyboardLayout and MacKeymap"
+  },
+  "server": {
+    "source_sha": "58c742452ded3f10a2ce61f60eb4845f18205e29",
+    "arguments": [
+      "--stdio",
+      "--headless"
+    ],
+    "modified": false
+  },
+  "status": "passed",
+  "typed_text": "hello [] é\nazerty êë\n",
+  "inputs_sent": 63,
+  "decoded_frames": 121,
+  "cursor_positions": 3,
+  "cursor_shapes": 5,
+  "input_rejections": 0,
+  "held_keys_after_release": 0,
+  "held_buttons_after_release": 0,
+  "cleanup": {
+    "task_terminal_processes": 0,
+    "server_processes": 0,
+    "remaining_outputs": [
+      "eDP-1"
+    ]
+  },
+  "limitations": [
+    "development-tree smoke, not clean-source compatibility qualification",
+    "bypasses native surface keyboard monitor",
+    "scroll and drag visual effects not asserted",
+    "real nontransparent cursor pixels unavailable",
+    "scaled output and physical keyboard variants not exercised"
+  ]
+}

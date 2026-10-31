@@ -1,9 +1,8 @@
 # 08 — render-full-chroma-metal
 
-Status: implemented on `feat/full-chroma-metal-rendering`; GPU live acceptance
+Status: merged in [PR #9](https://github.com/Remi-B/gliff-mac/pull/9); GPU live acceptance
 passes, CPU live acceptance is blocked by an auxiliary keyframe contract
-mismatch with the pinned server. [PR #9](https://github.com/Remi-B/gliff-mac/pull/9)
-remains a draft. Independent review's P2 recovery finding is fixed and covered
+mismatch with the pinned server. Independent review's P2 recovery finding is fixed and covered
 by a regression. Fixture pairs (synthetic, live CPU, live GPU) decode and
 recombine bit-exact with upstream's reference. Dependencies:
 [07](../07-decode-and-display-h264/README.md).

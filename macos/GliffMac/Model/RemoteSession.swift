@@ -12,10 +12,18 @@ protocol RemoteSession: AnyObject {
     func cancel()
     /// Where the session's decoded pictures appear; `nil` without a decoder.
     var videoDisplay: VideoDisplay? { get }
+    /// The keyboard layout whose keymap went into `Hello`; `nil` for the
+    /// server's default.
+    var keyboardLayout: KeyboardLayout? { get }
+    /// Queues input for the server without blocking; false when it was not
+    /// accepted (the session is not running or its input queue is full).
+    func send(_ input: InputEvent) -> Bool
 }
 
 extension RemoteSession {
     var videoDisplay: VideoDisplay? { nil }
+    var keyboardLayout: KeyboardLayout? { nil }
+    func send(_ input: InputEvent) -> Bool { false }
 }
 
 /// Builds sessions for the view model.
@@ -27,7 +35,10 @@ protocol SessionFactory {
 /// The real session: system OpenSSH and the bridge's protocol driver.
 struct LiveSessionFactory: SessionFactory {
     func makeSession(for request: ConnectionRequest) throws -> any RemoteSession {
-        try LiveSession(target: request.target(), options: SessionOptions(chroma: LiveSession.chroma))
+        let layout = KeyboardLayout.current()
+        return try LiveSession(
+            target: request.target(), options: SessionOptions(chroma: LiveSession.chroma, keymap: layout.keymap),
+            keyboardLayout: layout)
     }
 }
 
@@ -46,12 +57,14 @@ final class LiveSession: RemoteSession {
 
     private let session: GliffSession
     private let decoder: H264Decoder
+    let keyboardLayout: KeyboardLayout?
 
     var videoDisplay: VideoDisplay? { decoder.display }
 
-    init(target: ConnectionTarget, options: SessionOptions) throws {
+    init(target: ConnectionTarget, options: SessionOptions, keyboardLayout: KeyboardLayout? = nil) throws {
         let session = try GliffSession(target: target, options: options)
         self.session = session
+        self.keyboardLayout = keyboardLayout
         decoder = H264Decoder(display: VideoDisplay()) { [weak session] frameID, outcome in
             // `NotRunning` once the session ended: nothing left to acknowledge.
             try? session?.reportDecode(frameId: frameID, outcome: outcome)
@@ -75,6 +88,15 @@ final class LiveSession: RemoteSession {
     func cancel() {
         session.cancel()
         decoder.invalidate()
+    }
+
+    func send(_ input: InputEvent) -> Bool {
+        do {
+            try session.sendInput(event: input)
+            return true
+        } catch {
+            return false
+        }
     }
 
     /// The bridge's counters: frames delivered, acknowledgements, keyframe requests.
