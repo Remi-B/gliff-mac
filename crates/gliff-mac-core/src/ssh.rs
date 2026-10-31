@@ -85,6 +85,7 @@ fn command(target: &ConnectionTarget, policy: &Path) -> Command {
         server_path,
         identity_file,
         headless,
+        output,
         video_mode,
     } = target
     else {
@@ -122,6 +123,10 @@ fn command(target: &ConnectionTarget, policy: &Path) -> Command {
         quote(server_path.as_deref().unwrap_or("gliff-server")),
         if *headless { " --headless" } else { "" }
     );
+    if let Some(output) = output.as_deref().filter(|_| !*headless) {
+        // Validated: an output name, never an option or shell syntax.
+        remote.push_str(&format!(" --output {}", quote(output)));
+    }
     if let Some(mode) = video_mode.flag() {
         remote.push_str(&format!(" --video {mode}"));
     }
@@ -134,19 +139,43 @@ fn command(target: &ConnectionTarget, policy: &Path) -> Command {
 }
 
 // Raw diagnostics never cross the bridge: even paths and hostnames can be private.
-fn diagnostic(bytes: &[u8]) -> String {
+// Unreachable hosts and timeouts are link failures (`Transport`, retried by a
+// reconnecting app); refusals that need the user's action are `Setup`.
+fn diagnostic(bytes: &[u8]) -> GliffError {
     let s = String::from_utf8_lossy(bytes).to_ascii_lowercase();
+    let transport = |message: &str| GliffError::Transport {
+        message: message.into(),
+    };
+    let setup = |message: &str| GliffError::Setup {
+        message: message.into(),
+    };
     if s.contains("timed out") {
-        "SSH connection timed out before the protocol handshake. Check host reachability and any ProxyJump hosts."
-    } else if s.contains("could not resolve hostname") || s.contains("connection refused") || s.contains("no route to host") {
-        "SSH could not reach the host. Check the hostname or config alias, network and SSH service."
-    } else if s.contains("host key verification failed") || s.contains("remote host identification has changed") {
-        "SSH host key verification failed. Verify the host fingerprint in Terminal and repair known_hosts only after confirming it with the administrator."
-    } else if s.contains("permission denied (") || s.contains("no such identity") || s.contains("sign_and_send_pubkey") {
-        "SSH key authentication failed. Check the username, identity file and GUI SSH agent; establish key authentication in Terminal first."
-    } else if s.contains("not found") || s.contains("no such file") || s.contains("permission denied") {
-        "Remote server could not start. Check the server executable path and its permissions."
-    } else { "SSH connection or remote server ended. Check host reachability, SSH configuration, key authentication and the server executable." }.into()
+        transport("SSH connection timed out before the protocol handshake. Check host reachability and any ProxyJump hosts.")
+    } else if s.contains("could not resolve hostname")
+        || s.contains("connection refused")
+        || s.contains("no route to host")
+        || s.contains("network is unreachable")
+    {
+        transport("SSH could not reach the host. Check the hostname or config alias, network and SSH service.")
+    } else if s.contains("host key verification failed")
+        || s.contains("remote host identification has changed")
+    {
+        setup("SSH host key verification failed. Verify the host fingerprint in Terminal and repair known_hosts only after confirming it with the administrator.")
+    } else if s.contains("permission denied (")
+        || s.contains("no such identity")
+        || s.contains("sign_and_send_pubkey")
+    {
+        setup("SSH key authentication failed. Check the username, identity file and GUI SSH agent; establish key authentication in Terminal first.")
+    } else if s.contains("not found")
+        || s.contains("no such file")
+        || s.contains("permission denied")
+    {
+        setup(
+            "Remote server could not start. Check the server executable path and its permissions.",
+        )
+    } else {
+        transport("SSH connection or remote server ended. Check host reachability, SSH configuration, key authentication and the server executable.")
+    }
 }
 
 pub(crate) async fn run(
@@ -256,9 +285,7 @@ fn classify_end(
     match result {
         Ok(core::SessionEnd::Cancelled) => SessionEnd::Cancelled,
         Ok(core::SessionEnd::Closed) if !connected => SessionEnd::Failed {
-            error: GliffError::Transport {
-                message: diagnostic(diagnostics),
-            },
+            error: diagnostic(diagnostics),
         },
         Ok(core::SessionEnd::Closed) if !successful_exit => SessionEnd::Failed {
             error: GliffError::Transport {
@@ -275,9 +302,7 @@ fn classify_end(
         // log before rejecting our protocol; retain its typed fatal error.
         Err(SessionError::Transport(_)) if !connected && !diagnostics.is_empty() => {
             SessionEnd::Failed {
-                error: GliffError::Transport {
-                    message: diagnostic(diagnostics),
-                },
+                error: diagnostic(diagnostics),
             }
         }
         Err(error) => SessionEnd::Failed {
@@ -350,6 +375,7 @@ mod tests {
             server_path: Some("/tmp/a'b".into()),
             identity_file: Some("/tmp/key file".into()),
             headless: true,
+            output: None,
             video_mode: VideoMode::Cpu,
         };
         target.validate().unwrap();
@@ -382,6 +408,7 @@ mod tests {
                 server_path: None,
                 identity_file: None,
                 headless: false,
+                output: None,
                 video_mode: mode,
             };
             let args: Vec<_> = command(&target, Path::new("/tmp/policy"))
@@ -393,16 +420,64 @@ mod tests {
         }
     }
     #[test]
+    fn mirror_output_is_a_validated_remote_argument() {
+        let target = |headless: bool, output: Option<&str>| ConnectionTarget::Ssh {
+            host: "host".into(),
+            user: None,
+            port: None,
+            server_path: None,
+            identity_file: None,
+            headless,
+            output: output.map(Into::into),
+            video_mode: VideoMode::Auto,
+        };
+        let last = |target: &ConnectionTarget| {
+            command(target, Path::new("/tmp/policy"))
+                .as_std()
+                .get_args()
+                .last()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_owned()
+        };
+        let mirror = target(false, Some("DP-1"));
+        mirror.validate().unwrap();
+        assert_eq!(last(&mirror), "exec 'gliff-server' --stdio --output 'DP-1'");
+        assert_eq!(last(&target(false, None)), "exec 'gliff-server' --stdio");
+        for bad in ["", "-x", "DP 1", "a;b", "$(x)", "é", &"a".repeat(65)] {
+            assert!(target(false, Some(bad)).validate().is_err(), "{bad:?}");
+        }
+        // The server rejects --output with --headless: so does the bridge.
+        assert!(target(true, Some("DP-1")).validate().is_err());
+    }
+
+    #[test]
     fn diagnostics_are_actionable_and_redacted() {
-        for (raw, expected) in [
-            ("secret host key verification failed", "fingerprint"),
-            ("secret Permission denied (publickey)", "agent"),
-            ("secret command not found", "executable"),
-            ("secret Permission denied: gliff-server", "executable"),
-            ("secret Operation timed out", "ProxyJump"),
-            ("secret Could not resolve hostname", "hostname"),
+        for (raw, expected, retryable) in [
+            ("secret host key verification failed", "fingerprint", false),
+            ("secret Permission denied (publickey)", "agent", false),
+            ("secret command not found", "executable", false),
+            (
+                "secret Permission denied: gliff-server",
+                "executable",
+                false,
+            ),
+            ("secret Operation timed out", "ProxyJump", true),
+            ("secret Could not resolve hostname", "hostname", true),
+            (
+                "secret connect to host: Network is unreachable",
+                "hostname",
+                true,
+            ),
+            ("secret Connection reset by peer", "reachability", true),
         ] {
-            let message = diagnostic(raw.as_bytes());
+            let (message, transport) = match diagnostic(raw.as_bytes()) {
+                GliffError::Transport { message } => (message, true),
+                GliffError::Setup { message } => (message, false),
+                other => panic!("{other:?}"),
+            };
+            assert_eq!(transport, retryable, "{raw}");
             assert!(message.contains(expected));
             assert!(!message.contains("secret"));
         }

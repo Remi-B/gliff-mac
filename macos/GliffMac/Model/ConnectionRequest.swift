@@ -19,11 +19,14 @@ struct ConnectionRequest: Codable, Equatable, Hashable, Sendable {
     var serverPath = ""
     /// Ask the server for a virtual display instead of mirroring an output.
     var headless = true
+    /// Mirror mode only: the output to mirror, such as `DP-1`; empty mirrors
+    /// the server's focused output.
+    var output = ""
     /// Server-side encoder. Auto omits `--video` (the server decides); CPU and GPU pass it.
     var videoMode: ServerVideoMode = .auto
 
     enum Field: String, CaseIterable, Sendable {
-        case host, user, port, identityFile, serverPath
+        case host, user, port, identityFile, serverPath, output
     }
 
     /// One message per invalid field, mirroring the bridge's own validation so
@@ -66,6 +69,13 @@ struct ConnectionRequest: Codable, Equatable, Hashable, Sendable {
                 errors[.serverPath] = "A server path cannot contain spaces or control characters."
             }
         }
+        let output = trimmed(self.output)
+        if !headless, !output.isEmpty,
+            output.count > 64 || output.hasPrefix("-")
+                || !output.unicodeScalars.allSatisfy(Self.userCharacters.contains)
+        {
+            errors[.output] = "Enter an output name such as DP-1, or leave it empty for the focused output."
+        }
         return errors
     }
 
@@ -79,7 +89,15 @@ struct ConnectionRequest: Codable, Equatable, Hashable, Sendable {
             serverPath: nonEmpty(serverPath),
             identityFile: nonEmpty(identityFile),
             headless: headless,
+            output: headless ? nil : nonEmpty(output),
             videoMode: videoMode.bridgeValue)
+    }
+
+    /// How the remote desktop is shown, for the recent hosts list.
+    var displayModeDescription: String {
+        if headless { return "Virtual display" }
+        let output = trimmed(self.output)
+        return output.isEmpty ? "Mirror focused output" : "Mirror \(output)"
     }
 
     /// `user@host:port`, for titles and the recent hosts list.
@@ -95,11 +113,11 @@ struct ConnectionRequest: Codable, Equatable, Hashable, Sendable {
         ConnectionRequest(
             host: trimmed(host), user: trimmed(user), port: trimmed(port),
             identityFile: trimmed(identityFile), serverPath: trimmed(serverPath), headless: headless,
-            videoMode: videoMode)
+            output: headless ? "" : trimmed(output), videoMode: videoMode)
     }
 
     fileprivate enum CodingKeys: String, CodingKey {
-        case host, user, port, identityFile, serverPath, headless, videoMode
+        case host, user, port, identityFile, serverPath, headless, output, videoMode
     }
 
     private static let hostCharacters = CharacterSet(
@@ -112,8 +130,9 @@ struct ConnectionRequest: Codable, Equatable, Hashable, Sendable {
     }
 }
 
-/// Older saved entries have no `videoMode`; they decode as Auto, the previous
-/// behaviour. Declared in an extension to keep the memberwise initializer.
+/// Older saved entries have no `videoMode` or `output`; they decode as Auto
+/// and the focused output, the previous behaviour. Declared in an extension
+/// to keep the memberwise initializer.
 extension ConnectionRequest {
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -123,6 +142,7 @@ extension ConnectionRequest {
         identityFile = try values.decode(String.self, forKey: .identityFile)
         serverPath = try values.decode(String.self, forKey: .serverPath)
         headless = try values.decode(Bool.self, forKey: .headless)
+        output = try values.decodeIfPresent(String.self, forKey: .output) ?? ""
         videoMode = try values.decodeIfPresent(ServerVideoMode.self, forKey: .videoMode) ?? .auto
     }
 }

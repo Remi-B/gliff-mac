@@ -14,6 +14,12 @@
 //! deliveries go through a bounded channel, so a slow consumer stalls the
 //! reader rather than growing memory.
 //!
+//! Liveness: once streaming, a server that has said nothing for
+//! [`PING_AFTER`] gets a `Ping`, and one silent for [`SILENCE_LIMIT`] while
+//! the driver was willing to read has stalled: the session fails with a
+//! timeout, which the app treats as a lost link. The server pings only once
+//! at startup and sends frames only on damage, so silence alone is normal.
+//!
 //! The SSH transport is added by task 05; the driver itself is the same for
 //! a recorded stream and a live server.
 
@@ -34,6 +40,10 @@ use crate::video::{DecoderSupport, EncodedFrame, FrameDisposition, VideoConfig, 
 const BYE_TIMEOUT: Duration = Duration::from_secs(1);
 /// Input messages waiting for the writer; beyond this `send_input` fails.
 pub const INPUT_QUEUE: usize = 256;
+/// Server silence after which a streaming client sends `Ping`.
+pub const PING_AFTER: Duration = Duration::from_secs(5);
+/// Server silence, while the driver reads, that ends the session.
+pub const SILENCE_LIMIT: Duration = Duration::from_secs(15);
 
 #[derive(Debug, Clone)]
 pub struct SessionConfig {
@@ -212,6 +222,13 @@ pub struct Stats {
     pub inputs_sent: u64,
     pub peak_in_flight_frames: u64,
     pub peak_in_flight_bytes: u64,
+    /// Liveness pings sent after server silence.
+    pub pings_sent: u64,
+    /// Frames handed out and not yet reported, now: queue pressure.
+    pub in_flight_frames: u64,
+    /// From a frame's admission to its decode report, in microseconds.
+    pub decode_delay_last_us: u64,
+    pub decode_delay_max_us: u64,
 }
 
 #[derive(Default)]
@@ -226,6 +243,9 @@ struct Counters {
     inputs_sent: AtomicU64,
     peak_in_flight_frames: AtomicU64,
     peak_in_flight_bytes: AtomicU64,
+    pings_sent: AtomicU64,
+    decode_delay_last_us: AtomicU64,
+    decode_delay_max_us: AtomicU64,
 }
 
 fn bump(counter: &AtomicU64) {
@@ -240,6 +260,9 @@ struct Flight {
     largest_keyframe: u64,
     lose_reference: bool,
     running: bool,
+    /// The last server message read, or the last time the driver could not
+    /// read because the in-flight budget was used up.
+    heard: tokio::time::Instant,
 }
 
 struct Entry {
@@ -297,6 +320,7 @@ impl Control {
                 largest_keyframe: 0,
                 lose_reference: false,
                 running: true,
+                heard: tokio::time::Instant::now(),
             }),
             wake: Notify::new(),
             input: input_tx,
@@ -354,6 +378,13 @@ impl Control {
             .ok_or(ControlError::UnknownFrame(frame_id))?;
         entry.outcome = Some(outcome);
         let stale = entry.generation != current;
+        let delay = entry.admitted.elapsed().as_micros() as u64;
+        self.counters
+            .decode_delay_last_us
+            .store(delay, Ordering::Relaxed);
+        self.counters
+            .decode_delay_max_us
+            .fetch_max(delay, Ordering::Relaxed);
         match outcome {
             FrameOutcome::Decoded => {}
             FrameOutcome::Failed => bump(&self.counters.frames_failed),
@@ -411,6 +442,7 @@ impl Control {
     }
 
     pub fn stats(&self) -> Stats {
+        let in_flight_frames = self.flight().entries.len() as u64;
         let c = &self.counters;
         let get = |a: &AtomicU64| a.load(Ordering::Relaxed);
         Stats {
@@ -424,7 +456,25 @@ impl Control {
             inputs_sent: get(&c.inputs_sent),
             peak_in_flight_frames: get(&c.peak_in_flight_frames),
             peak_in_flight_bytes: get(&c.peak_in_flight_bytes),
+            pings_sent: get(&c.pings_sent),
+            in_flight_frames,
+            decode_delay_last_us: get(&c.decode_delay_last_us),
+            decode_delay_max_us: get(&c.decode_delay_max_us),
         }
+    }
+
+    /// When the server was last heard from, counting time the driver chose
+    /// not to read as heard: the decode watchdog covers that.
+    fn heard(&self) -> tokio::time::Instant {
+        let mut flight = self.flight();
+        if !flight.has_capacity() {
+            flight.heard = tokio::time::Instant::now();
+        }
+        flight.heard
+    }
+
+    fn mark_heard(&self) {
+        self.flight().heard = tokio::time::Instant::now();
     }
 
     fn admit(&self, frame_id: u64, generation: u32, bytes: u64, outcome: Option<FrameOutcome>) {
@@ -488,13 +538,20 @@ where
     let started = control.started.swap(true, Ordering::AcqRel);
     assert!(!started, "a Control drives one session");
     let mut session = Session {
-        reader: ServerReader::new(reader, config.support.clone()),
+        reader: ServerReader::new(
+            Progress {
+                inner: reader,
+                control: control.clone(),
+            },
+            config.support.clone(),
+        ),
         writer: Framed::new(writer),
         control: control.clone(),
         input,
         cancel: control.cancel.subscribe(),
         deliveries,
         writing: false,
+        pinged: None,
     };
     // Cancellation also interrupts a write blocked on a peer that stopped
     // reading, so teardown never waits on the network beyond BYE_TIMEOUT.
@@ -512,6 +569,9 @@ where
                 if control.flight().entries.front().is_some_and(|e| e.admitted.elapsed() >= Duration::from_secs(15)) {
                     break "native decode stalled for 15 seconds";
                 }
+                if control.generation() > 0 && control.heard().elapsed() >= SILENCE_LIMIT {
+                    break "the server stopped responding for 15 seconds";
+                }
             }
         } => Err(gliff_transport::Error::from(std::io::Error::new(std::io::ErrorKind::TimedOut, message)).into()),
         result = session.drive(&config) => result,
@@ -525,8 +585,30 @@ where
     result
 }
 
+/// Counts every byte read as hearing from the server, so a large message
+/// arriving slowly over a weak link is not mistaken for silence.
+struct Progress<R> {
+    inner: R,
+    control: Arc<Control>,
+}
+
+impl<R: AsyncRead + Unpin> AsyncRead for Progress<R> {
+    fn poll_read(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &mut tokio::io::ReadBuf<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        let before = buf.filled().len();
+        let poll = std::pin::Pin::new(&mut self.inner).poll_read(cx, buf);
+        if matches!(poll, std::task::Poll::Ready(Ok(()))) && buf.filled().len() > before {
+            self.control.mark_heard();
+        }
+        poll
+    }
+}
+
 struct Session<R, W, T> {
-    reader: ServerReader<R>,
+    reader: ServerReader<Progress<R>>,
     writer: Framed<W>,
     control: Arc<Control>,
     input: mpsc::Receiver<ClientMsg>,
@@ -534,6 +616,8 @@ struct Session<R, W, T> {
     deliveries: mpsc::Sender<T>,
     /// A write is in progress; still set if cancellation interrupted it.
     writing: bool,
+    /// The last liveness ping sent.
+    pinged: Option<tokio::time::Instant>,
 }
 
 /// The driver stopped because of cancellation.
@@ -545,6 +629,7 @@ enum Step {
     Wake,
     Input(ClientMsg),
     Event(Result<ServerEvent, SessionError>),
+    Ping,
 }
 
 impl<R, W, T> Session<R, W, T>
@@ -581,16 +666,31 @@ where
             }
             self.flush().await?;
             let can_read = self.control.flight().has_capacity();
+            // Ping a silent server once streaming, at most every PING_AFTER.
+            let streaming = self.control.generation() > 0;
+            let quiet_since = self
+                .control
+                .heard()
+                .max(self.pinged.unwrap_or(self.control.heard()));
             let step = tokio::select! {
                 biased;
                 _ = self.cancel.wait_for(|c| *c) => Step::Cancel,
                 _ = self.control.wake.notified() => Step::Wake,
                 Some(msg) = self.input.recv() => Step::Input(msg),
                 event = self.reader.next_event(), if can_read => Step::Event(event),
+                _ = tokio::time::sleep_until(quiet_since + PING_AFTER), if streaming => Step::Ping,
             };
             match step {
                 Step::Cancel => return Ok(SessionEnd::Cancelled),
                 Step::Wake => {}
+                Step::Ping => {
+                    let t = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .map_or(0, |d| d.as_millis() as u64);
+                    self.write(&ClientMsg::Ping { t }).await?;
+                    self.pinged = Some(tokio::time::Instant::now());
+                    bump(&self.control.counters.pings_sent);
+                }
                 Step::Input(msg) => {
                     self.write(&msg).await?;
                     bump(&self.control.counters.inputs_sent);
@@ -599,7 +699,9 @@ where
                     return self.close(config.drain_on_close).await;
                 }
                 Step::Event(event) => {
-                    if self.handle(event?).await?.is_err() {
+                    let event = event?;
+                    self.control.mark_heard();
+                    if self.handle(event).await?.is_err() {
                         return Ok(SessionEnd::Cancelled);
                     }
                 }

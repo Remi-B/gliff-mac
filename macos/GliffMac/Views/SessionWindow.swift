@@ -100,8 +100,14 @@ struct ConnectingView: View {
             Text(detail)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            Button("Cancel", role: .cancel) { controller.disconnect() }
-                .keyboardShortcut(.cancelAction)
+            HStack {
+                if step == .waiting, controller.reconnection?.awaitingWake == false {
+                    Button("Try Now") { controller.retryNow() }
+                        .keyboardShortcut(.defaultAction)
+                }
+                Button("Cancel", role: .cancel) { controller.disconnect() }
+                    .keyboardShortcut(.cancelAction)
+            }
         }
         .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -115,10 +121,14 @@ struct ConnectingView: View {
     }
 
     private var detail: String {
-        switch step {
+        let step = switch step {
         case .starting: "Opening SSH with your keys and agent, then starting gliff-server."
         case .awaitingVideo: "The server answered. Waiting for its video stream."
+        case .waiting where controller.reconnection?.awaitingWake == true: "Waiting for the Mac to wake."
+        case .waiting: "Waiting before the next attempt."
         }
+        guard let reconnection = controller.reconnection else { return step }
+        return "\(reconnection.reason)\nAttempt \(reconnection.attempt) of \(reconnection.limit). \(step)"
     }
 }
 

@@ -29,7 +29,11 @@ import Testing
 
         controller.connect()
         try await waitUntil { registry.activeCount == 0 }
-        #expect(controller.phase == .stopped(.serverClosed))
+        // A server that closes after streaming is retried automatically;
+        // disconnecting cancels the wait.
+        #expect(controller.phase == .reconnecting(.waiting))
+        #expect(controller.reconnection?.reason == "The server ended the session.")
+        controller.disconnect()
         #expect(phases.first == "idle")
         #expect(phases.contains("streaming"))
         #expect(phases.last == "stopped")
