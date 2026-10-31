@@ -17,7 +17,7 @@ fn quote(word: &str) -> String {
 // -F is propagated by OpenSSH to every generated ProxyJump command. Apply
 // invariant options before including the ordinary user and system configs,
 // so aliases, identities and jump chains retain their normal configuration.
-fn policy_config(user: &str, system: &str) -> std::io::Result<tempfile::NamedTempFile> {
+pub(crate) fn policy_config(user: &str, system: &str) -> std::io::Result<tempfile::NamedTempFile> {
     let mut file = tempfile::Builder::new().prefix("gliff-ssh-").tempfile()?;
     writeln!(file, "Host *")?;
     for option in [
@@ -47,13 +47,13 @@ fn policy_config(user: &str, system: &str) -> std::io::Result<tempfile::NamedTem
     Ok(file)
 }
 
-struct ProcessGroup {
-    pid: Pid,
-    armed: bool,
+pub(crate) struct ProcessGroup {
+    pub(crate) pid: Pid,
+    pub(crate) armed: bool,
 }
 
 impl ProcessGroup {
-    async fn terminate(&self) {
+    pub(crate) async fn terminate(&self) {
         if test_kill_process_group(self.pid) == Err(rustix::io::Errno::SRCH) {
             return;
         }
@@ -79,45 +79,15 @@ impl Drop for ProcessGroup {
 
 fn command(target: &ConnectionTarget, policy: &Path) -> Command {
     let ConnectionTarget::Ssh {
-        host,
-        user,
-        port,
         server_path,
-        identity_file,
         headless,
         output,
         video_mode,
+        ..
     } = target
     else {
         unreachable!()
     };
-    let mut cmd = Command::new("/usr/bin/ssh");
-    cmd.arg("-F").arg(policy);
-    cmd.args([
-        "-T",
-        "-oBatchMode=yes",
-        "-oStrictHostKeyChecking=yes",
-        "-oConnectTimeout=10",
-        "-oConnectionAttempts=1",
-        "-oServerAliveInterval=10",
-        "-oServerAliveCountMax=2",
-        "-oControlMaster=no",
-        "-oControlPath=none",
-        "-oPermitLocalCommand=no",
-        "-oClearAllForwardings=yes",
-        "-oForwardAgent=no",
-        "-oForwardX11=no",
-        "-oForwardX11Trusted=no",
-    ]);
-    if let Some(user) = user {
-        cmd.args(["-l", user]);
-    }
-    if let Some(port) = port {
-        cmd.args(["-p", &port.to_string()]);
-    }
-    if let Some(identity) = identity_file {
-        cmd.args(["-i", identity]);
-    }
     let mut remote = format!(
         "exec {} --stdio{}",
         quote(server_path.as_deref().unwrap_or("gliff-server")),
@@ -130,6 +100,58 @@ fn command(target: &ConnectionTarget, policy: &Path) -> Command {
     if let Some(mode) = video_mode.flag() {
         remote.push_str(&format!(" --video {mode}"));
     }
+    ssh(
+        target,
+        policy,
+        &["-oServerAliveInterval=10", "-oServerAliveCountMax=2"],
+        &remote,
+    )
+}
+
+/// `/usr/bin/ssh` to the target's host, user, port and identity under the
+/// session policy, with `extra` fixed options, running `remote`.
+pub(crate) fn ssh(
+    target: &ConnectionTarget,
+    policy: &Path,
+    extra: &[&str],
+    remote: &str,
+) -> Command {
+    let ConnectionTarget::Ssh {
+        host,
+        user,
+        port,
+        identity_file,
+        ..
+    } = target
+    else {
+        unreachable!()
+    };
+    let mut cmd = Command::new("/usr/bin/ssh");
+    cmd.arg("-F").arg(policy);
+    cmd.args([
+        "-T",
+        "-oBatchMode=yes",
+        "-oStrictHostKeyChecking=yes",
+        "-oConnectTimeout=10",
+        "-oConnectionAttempts=1",
+        "-oControlMaster=no",
+        "-oControlPath=none",
+        "-oPermitLocalCommand=no",
+        "-oClearAllForwardings=yes",
+        "-oForwardAgent=no",
+        "-oForwardX11=no",
+        "-oForwardX11Trusted=no",
+    ]);
+    cmd.args(extra);
+    if let Some(user) = user {
+        cmd.args(["-l", user]);
+    }
+    if let Some(port) = port {
+        cmd.args(["-p", &port.to_string()]);
+    }
+    if let Some(identity) = identity_file {
+        cmd.args(["-i", identity]);
+    }
     cmd.arg("--").arg(host).arg(remote);
     cmd.stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -141,7 +163,7 @@ fn command(target: &ConnectionTarget, policy: &Path) -> Command {
 // Raw diagnostics never cross the bridge: even paths and hostnames can be private.
 // Unreachable hosts and timeouts are link failures (`Transport`, retried by a
 // reconnecting app); refusals that need the user's action are `Setup`.
-fn diagnostic(bytes: &[u8]) -> GliffError {
+pub(crate) fn diagnostic(bytes: &[u8]) -> GliffError {
     let s = String::from_utf8_lossy(bytes).to_ascii_lowercase();
     let transport = |message: &str| GliffError::Transport {
         message: message.into(),

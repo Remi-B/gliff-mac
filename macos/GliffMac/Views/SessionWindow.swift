@@ -18,6 +18,7 @@ struct SessionWindow: View {
             .toolbar { SessionToolbar(controller: controller) }
             .focusedSceneObject(controller)
             .environmentObject(recents)
+            .orphanMonitorSheet(controller: controller)
             .background(WindowCloseObserver { controller.close() })
             .onDisappear { controller.close() }
             #if DEBUG

@@ -99,6 +99,8 @@ final class SessionController: ObservableObject {
     @Published private(set) var reconnection: Reconnection?
     /// Links lost and restored automatically in this window.
     @Published private(set) var reconnectCount = 0
+    /// Orphaned virtual monitors found on the host after each connection.
+    let monitors: OrphanMonitors
 
     /// The settings of the current or last attempt, used by reconnect.
     private(set) var activeRequest: ConnectionRequest?
@@ -133,7 +135,9 @@ final class SessionController: ObservableObject {
         factory: any SessionFactory, registry: SessionRegistry, recents: RecentConnections,
         request: ConnectionRequest = ConnectionRequest(),
         currentLayout: @escaping @MainActor () -> KeyboardLayout = KeyboardLayout.current,
-        scheduler: any Scheduler = TaskScheduler(), timing: SessionTiming = SessionTiming()
+        scheduler: any Scheduler = TaskScheduler(), timing: SessionTiming = SessionTiming(),
+        monitorService: (any MonitorService)? = nil,
+        removesMonitorsAutomatically: @escaping @MainActor () -> Bool = OrphanMonitors.automaticSetting
     ) {
         self.factory = factory
         self.registry = registry
@@ -142,6 +146,8 @@ final class SessionController: ObservableObject {
         self.currentLayout = currentLayout
         self.scheduler = scheduler
         self.timing = timing
+        monitors = OrphanMonitors(
+            service: monitorService, scheduler: scheduler, automatic: removesMonitorsAutomatically)
         layoutObserver = DistributedNotificationCenter.default().addObserver(
             forName: KeyboardLayout.selectionChanged, object: nil, queue: .main
         ) { [weak self] _ in
@@ -227,6 +233,7 @@ final class SessionController: ObservableObject {
         isClosed = true
         endCurrentSession()
         stopReconnecting()
+        monitors.close()
     }
 
     // MARK: System events
@@ -412,6 +419,7 @@ final class SessionController: ObservableObject {
     /// Drops everything tied to the current session: its input state (no
     /// key is replayed into a later one), pictures and pending resize.
     private func forgetSession() {
+        monitors.sessionEnded()
         currentSession = nil
         session = nil
         videoDisplay = nil
@@ -434,7 +442,11 @@ final class SessionController: ObservableObject {
             self.hello = hello
             cursorOutputScale = CGFloat(hello.outputs.first { $0.name == hello.output }?.scaleMilli ?? 1000) / 1000
             setCursorImage(cursorImage)
-            if let request = activeRequest { recents.remember(request) }
+            if let request = activeRequest {
+                recents.remember(request)
+                // In parallel with the session: a separate SSH command.
+                monitors.sessionConnected(request)
+            }
             advance(to: .awaitingVideo)
         case .videoConfig(let config):
             if !isStreaming {

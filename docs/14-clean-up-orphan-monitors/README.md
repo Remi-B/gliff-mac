@@ -1,6 +1,8 @@
 # 14 — clean-up-orphan-monitors
 
-Status: planned. Dependencies: [10](../10-implement-displays-and-reconnection/README.md).
+Status: in review; implemented with bridge, script and app tests and live checks on
+the Omarchy host (see the [implementation record](implementation-record.md)). A host
+without Hyprland is verified by tests only. Dependencies: [10](../10-implement-displays-and-reconnection/README.md).
 Scheduled before task 11: orphaned outputs disturb every development session until
 the server side is fixed.
 
@@ -45,30 +47,31 @@ outside the repository: `~/Projects/Gliff/utils/list-monitors.sh` and
 
 ## Work
 
-- [ ] Remote check in the bridge, over a separate SSH command with the session's
+- [x] Remote check in the bridge, over a separate SSH command with the session's
   policy (same host, user, identity, known hosts, batch mode): a fixed POSIX `sh`
   script with no user input interpolated, which finds the Hyprland instance when the
   environment does not name it, lists orphaned `gliff-<pid>` outputs with size and
   enabled state, and prints a strict line format. A host without `hyprctl` or a
   running Hyprland returns no orphans and logs the reason, without an error for the
   user. Time-bounded and cancelled with its window or session.
-- [ ] Removal in the bridge for a given list of names, with the re-check above;
+- [x] Removal in the bridge for a given list of names, with the re-check above;
   returns a result per output (removed, still in use, failed).
-- [ ] Run the check after every successful connection, including automatic
+- [x] Run the check after every successful connection, including automatic
   reconnections and mirror mode, without delaying the session.
-- [ ] Confirmation sheet on the session window: host, count, names and sizes, and a
+- [x] Confirmation sheet on the session window: host, count, names and sizes, and a
   note that windows on these monitors move to another monitor. **Remove** and
   **Ignore**; ignored outputs are not offered again for that window. Show the result.
-- [ ] Setting "Automatically remove orphaned virtual monitors", off by default: when
+- [x] Setting "Automatically remove orphaned virtual monitors", off by default: when
   on, remove without the sheet and show a short status instead.
-- [ ] Logs: counts, outcomes and output names only; no host names or paths.
-- [ ] Verify on the live host what Hyprland does with windows and workspaces of a
+- [x] Logs: counts, outcomes and output names only; no host names or paths.
+- [x] Verify on the live host what Hyprland does with windows and workspaces of a
   removed headless output (expected: moved to a remaining monitor, nothing closed),
   using only temporary headless outputs, never capturing the physical monitor.
   Record it and adjust the sheet's wording.
-- [ ] Propose the server-side fix upstream separately (verify or retry the removal,
+- [x] Propose the server-side fix upstream separately (verify or retry the removal,
   survive a disabled/re-enabled output, remove its own stale outputs at startup);
-  the app keeps no patch to the vendored server.
+  the app keeps no patch to the vendored server. Drafted in
+  [upstream-proposal.md](upstream-proposal.md); filing it upstream is the user's call.
 
 ## Deliverables and acceptance
 

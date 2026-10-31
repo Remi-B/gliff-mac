@@ -1,0 +1,65 @@
+{
+ "outputs_before": [
+  "gliff-3999990",
+  "gliff-534316",
+  "gliff-535240"
+ ],
+ "check": {
+  "action": "check",
+  "found": [
+   {
+    "name": "gliff-535240",
+    "width": 1920,
+    "height": 1080,
+    "enabled": true
+   },
+   {
+    "name": "gliff-3999990",
+    "width": 1920,
+    "height": 1080,
+    "enabled": true
+   }
+  ],
+  "elapsed_ms": 10496
+ },
+ "cancel": {
+  "action": "cancel",
+  "cancelled": true,
+  "elapsed_ms": 114
+ },
+ "remove": {
+  "action": "remove",
+  "results": [
+   {
+    "name": "gliff-535240",
+    "outcome": "Removed"
+   },
+   {
+    "name": "gliff-3999990",
+    "outcome": "Removed"
+   },
+   {
+    "name": "gliff-534316",
+    "outcome": "InUse"
+   }
+  ],
+  "elapsed_ms": 10555
+ },
+ "outputs_after_removal": [
+  "gliff-534316"
+ ],
+ "session_a_streaming_after_removal": true,
+ "local_ssh_after_cancel": 0,
+ "leftovers": {
+  "gliff_outputs": 0,
+  "servers": 0,
+  "local_ssh": 0
+ },
+ "passed": {
+  "orphans_found_running_session_not": true,
+  "cancelled": true,
+  "removed": true,
+  "running_session_kept": true,
+  "no_leftovers": true
+ }
+}

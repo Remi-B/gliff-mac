@@ -6,6 +6,8 @@ enum Preferences {
     static let captureInputKey = "captureInputOnClick"
     static let captureInputDefault = true
     static let shareClipboardKey = "shareClipboard"
+    /// Off by default: a server in another pid namespace looks orphaned.
+    static let autoRemoveOrphanedMonitorsKey = "autoRemoveOrphanedMonitors"
 
     /// Releases keyboard and pointer capture (task 09's default). The menu item
     /// is enabled only while capturing, so the keys reach local controls
@@ -25,6 +27,7 @@ struct SettingsView: View {
     @ObservedObject var recents: RecentConnections
     @AppStorage(Preferences.captureInputKey) private var captureInput = Preferences.captureInputDefault
     @AppStorage(Preferences.shareClipboardKey) private var shareClipboard = false
+    @AppStorage(Preferences.autoRemoveOrphanedMonitorsKey) private var autoRemoveOrphanedMonitors = false
 
     var body: some View {
         Form {
@@ -51,6 +54,19 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             } header: {
                 Text("Clipboard")
+            }
+            Section {
+                Toggle("Automatically remove orphaned virtual monitors", isOn: $autoRemoveOrphanedMonitors)
+                Text("""
+                    After each connection Gliff looks for virtual monitors left on the host by Gliff \
+                    servers that no longer run. By default it asks before removing them; with this \
+                    setting it removes them at once. A server running in a container looks orphaned: \
+                    leave this off if you use one.
+                    """)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Virtual monitors")
             }
             Section {
                 Toggle("Remember recent hosts", isOn: Binding(

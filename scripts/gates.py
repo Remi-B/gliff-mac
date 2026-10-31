@@ -100,11 +100,15 @@ GATES = [
      [["scripts/test-app.sh"] + ["-only-testing:GliffMacTests/" + suite for suite in (
          "KeyCodeTests", "KeyboardLayoutTests", "PointerMappingTests", "InputForwarderTests",
          "RemoteCursorTests", "SurfaceInputTests", "SessionControllerTests")]]),
-    ("displays-reconnect", "Mirror/headless, resize, liveness and reconnection", True, "macos",
+    ("displays-reconnect",
+     "Mirror/headless, resize, liveness, reconnection and orphaned monitor cleanup", True,
+     "macos",
      [["cargo", "test", "--locked", "-p", "gliff-client-core", "--test", "liveness"],
       ["cargo", "test", "--locked", "-p", "gliff-mac-core", "ssh::"],
+      ["cargo", "test", "--locked", "-p", "gliff-mac-core", "monitors::"],
       ["scripts/test-app.sh"] + ["-only-testing:GliffMacTests/" + suite for suite in (
           "ReconnectionTests", "ConnectionRequestTests", "SessionControllerTests",
+          "OrphanMonitorTests",
           "LiveSessionTests", "Dual420DecoderTests/lateHalvesAcrossAReconnectStayWithTheOldDecoder()")]]),
     ("clipboard", "Shared clipboard transfers and isolation", False, "planned:11", []),
     ("acceptance", "Cross-platform acceptance matrix and measurements", False, "planned:12",

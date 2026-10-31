@@ -4,10 +4,15 @@
 //! upstream wire types. See `docs/04-build-rust-swift-bridge/bridge-contract.md`
 //! for thread ownership, delivery order, budgets and teardown.
 
+mod monitors;
 mod session;
 mod ssh;
 mod types;
 
+pub use monitors::{
+    CheckUnavailable, HostMonitors, OrphanCheck, OrphanRemoval, OrphanedOutput, OutputRemoval,
+    RemovalOutcome,
+};
 pub use session::{GliffSession, SessionDelegate};
 pub use types::*;
 

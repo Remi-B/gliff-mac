@@ -35,7 +35,8 @@ final class AppServices {
     let systemEvents = SystemEvents()
 
     func makeController() -> SessionController {
-        let controller = SessionController(factory: factory, registry: registry, recents: recents)
+        let controller = SessionController(
+            factory: factory, registry: registry, recents: recents, monitorService: LiveMonitorService())
         systemEvents.register(controller)
         return controller
     }

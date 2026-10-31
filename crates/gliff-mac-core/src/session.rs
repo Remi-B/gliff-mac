@@ -39,7 +39,7 @@ pub trait SessionDelegate: Send + Sync {
     fn on_ended(&self, end: SessionEnd);
 }
 
-fn runtime() -> &'static Runtime {
+pub(crate) fn runtime() -> &'static Runtime {
     static RUNTIME: OnceLock<Runtime> = OnceLock::new();
     RUNTIME.get_or_init(|| {
         tokio::runtime::Builder::new_multi_thread()
